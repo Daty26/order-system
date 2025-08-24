@@ -1,0 +1,124 @@
+basePath: /
+definitions:
+  model.Order:
+    properties:
+      amount:
+        type: integer
+      id:
+        type: integer
+      item:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: This is the order service for the Event-Driven Order System.
+  title: Order Service API
+  version: "1.0"
+paths:
+  /orders:
+    get:
+      description: List all orders currently stored
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Order'
+            type: array
+      summary: Get all orders
+    post:
+      consumes:
+      - application/json
+      description: Create new order with item and amount
+      parameters:
+      - description: Order data
+        in: body
+        name: order
+        required: true
+        schema:
+          $ref: '#/definitions/model.Order'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Order'
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+      summary: Create new order
+  /orders/{id}:
+    delete:
+      description: Delete order with specified id
+      responses:
+        "204":
+          description: No content
+        "400":
+          description: Invalid id
+          schema:
+            type: string
+        "500":
+          description: Couldn't delete order
+          schema:
+            type: string
+      summary: Delete order
+    get:
+      description: Fetch a single order by its ID
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Order'
+        "400":
+          description: Invalid ID
+          schema:
+            type: string
+        "404":
+          description: Order not found
+          schema:
+            type: string
+      summary: Get order by ID
+    put:
+      consumes:
+      - application/json
+      description: Update the item and amount of an order by ID
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Order'
+        "400":
+          description: Invalid ID or request body
+          schema:
+            type: string
+        "404":
+          description: Order not found
+          schema:
+            type: string
+        "500":
+          description: Couldn't update order
+          schema:
+            type: string
+      summary: Update an existing order
+swagger: "2.0"

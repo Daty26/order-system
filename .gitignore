@@ -1,0 +1,21 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go build
+bin/
+*.log
+
+# Vendor
+/vendor/
+# IDE stuff
+.vscode/
+.idea/
+*.swp
+# Swagger
+docs/*
