@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	_ "github.com/Daty26/order-system/order-service/docs"
 	"github.com/Daty26/order-system/order-service/internal/api"
@@ -22,14 +21,9 @@ import (
 // @BasePath /
 func main() {
 	db.InitDB()
-	defer func(DataB *sql.DB) {
-		err := DataB.Close()
-		if err != nil {
+	defer db.DataB.Close()
 
-		}
-	}(db.DataB)
-
-	repo := repository.NewRepo()
+	repo := repository.NewPostgresRepo(db.DataB)
 
 	svc := service.NewOrderService(repo)
 

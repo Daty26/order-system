@@ -48,7 +48,7 @@ func (s *OrderService) UpdateOrder(id int, item string, amount int) (model.Order
 }
 func (s *OrderService) DeleteOrder(id int) error {
 	if id <= 0 {
-		return errors.New("Invalid id")
+		return errors.New("invalid id")
 	}
 	return s.repo.Delete(id)
 }

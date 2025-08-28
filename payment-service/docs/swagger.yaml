@@ -1,0 +1,73 @@
+definitions:
+  api.PaymentRequest:
+    properties:
+      amount:
+        type: number
+      orderId:
+        type: integer
+    type: object
+  model.Payment:
+    properties:
+      amount:
+        type: number
+      id:
+        type: integer
+      orderID:
+        type: integer
+      status:
+        $ref: '#/definitions/model.PaymentStatus'
+    type: object
+  model.PaymentStatus:
+    enum:
+    - PENDING
+    - COMPLETED
+    - FAILED
+    type: string
+    x-enum-varnames:
+    - PaymentPending
+    - PaymentCompleted
+    - PaymentFailed
+info:
+  contact: {}
+paths:
+  /payments:
+    get:
+      description: Retrieve a list of all processed payments
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Payment'
+            type: array
+        "400":
+          description: Couldn't fetch payments
+          schema:
+            type: string
+      summary: Get all payments
+    post:
+      consumes:
+      - application/json
+      description: Process a new payment for a given order
+      parameters:
+      - description: Payment request
+        in: body
+        name: payment
+        required: true
+        schema:
+          $ref: '#/definitions/api.PaymentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Payment'
+        "400":
+          description: Invalid request
+          schema:
+            type: string
+      summary: Create a new payment
+swagger: "2.0"
