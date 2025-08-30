@@ -1,11 +1,15 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strconv"
 
 	_ "github.com/Daty26/order-system/payment-service/internal/model"
 	"github.com/Daty26/order-system/payment-service/internal/service"
+	"github.com/go-chi/chi/v5"
 )
 
 type PaymentHandler struct {
@@ -45,6 +49,24 @@ func (s *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	SuccessPayment(w, http.StatusCreated, payment)
+}
+
+func (s *PaymentHandler) GetPaymentByID(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		ErrorResponse(w, http.StatusBadRequest, "Invalid id type")
+		return
+	}
+	payment, err := s.paymentService.GetPaymentByID(id)
+	if errors.Is(err, sql.ErrNoRows) {
+		ErrorResponse(w, http.StatusNotFound, "Can't find payment with specified id ")
+		return
+	}
+	if err != nil {
+		ErrorResponse(w, http.StatusInternalServerError, "Can't fetch payment")
+		return
+	}
+	SuccessPayment(w, http.StatusOK, payment)
 }
 
 // GetPayments godoc

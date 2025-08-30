@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+
 	"github.com/Daty26/order-system/payment-service/internal/model"
 )
 
@@ -42,4 +43,13 @@ func (r *PostgresPaymentRep) GetAll() ([]model.Payment, error) {
 		payments = append(payments, payment)
 	}
 	return payments, nil
+}
+
+func (r *PostgresPaymentRep) GetByID(id int) (model.Payment, error) {
+	var payment model.Payment
+	err := r.db.QueryRow("SELECT id, order_id, status, amount from payment where id=$1", id).Scan(&payment.ID, &payment.OrderID, &payment.Status, &payment.Amount)
+	if err != nil {
+		return model.Payment{}, err
+	}
+	return payment, nil
 }

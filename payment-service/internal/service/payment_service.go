@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+
 	"github.com/Daty26/order-system/payment-service/internal/model"
 	"github.com/Daty26/order-system/payment-service/internal/repository"
 )
@@ -13,12 +14,13 @@ type PaymentService struct {
 func NewPaymentService(payRep repository.PaymentRep) *PaymentService {
 	return &PaymentService{paymentRep: payRep}
 }
-func (s *PaymentService) ProcessPayment(orderId int, amount float64) (model.Payment, error) {
+
+func (s *PaymentService) ProcessPayment(orderID int, amount float64) (model.Payment, error) {
 	if amount <= 0 {
 		return model.Payment{}, errors.New("amount can't be negative")
 	}
 	payment := model.Payment{
-		OrderID: orderId,
+		OrderID: orderID,
 		Status:  model.PaymentCompleted,
 		Amount:  amount,
 	}
@@ -27,4 +29,11 @@ func (s *PaymentService) ProcessPayment(orderId int, amount float64) (model.Paym
 
 func (s *PaymentService) GetAllPayments() ([]model.Payment, error) {
 	return s.paymentRep.GetAll()
+}
+
+func (s *PaymentService) GetPaymentByID(id int) (model.Payment, error) {
+	if id < 0 {
+		return model.Payment{}, errors.New("invalid id")
+	}
+	return s.paymentRep.GetByID(id)
 }
