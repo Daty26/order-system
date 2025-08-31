@@ -37,3 +37,19 @@ func (s *PaymentService) GetPaymentByID(id int) (model.Payment, error) {
 	}
 	return s.paymentRep.GetByID(id)
 }
+func (s *PaymentService) UpdatePayment(id int, status model.PaymentStatus, amount float64) (model.Payment, error) {
+	if id < 0 {
+		return model.Payment{}, errors.New("invalid id")
+	}
+	if amount < 0 {
+		return model.Payment{}, errors.New("invalid amount")
+	}
+	return s.paymentRep.Update(id, status, amount)
+}
+
+func (s *PaymentService) DeletePayment(id int) error {
+	if id <= 0 {
+		return errors.New("invalid id")
+	}
+	return s.paymentRep.Delete(id)
+}

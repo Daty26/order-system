@@ -70,4 +70,87 @@ paths:
           schema:
             type: string
       summary: Create a new payment
+  /payments/{id}:
+    delete:
+      description: Delete payment with specified ID
+      parameters:
+      - description: Payment ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Invalid id type
+          schema:
+            type: string
+        "404":
+          description: Payment not found
+          schema:
+            type: string
+        "500":
+          description: Couldn't delete payment
+          schema:
+            type: string
+      summary: Delete a payment
+    get:
+      description: Retrieve a single payment by its ID
+      parameters:
+      - description: Payment ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Payment'
+        "400":
+          description: Invalid id type
+          schema:
+            type: string
+        "404":
+          description: Payment not found
+          schema:
+            type: string
+        "500":
+          description: Could not fetch payment
+          schema:
+            type: string
+      summary: Get payment by ID
+    put:
+      consumes:
+      - application/json
+      description: Update status and amount of a payment by ID
+      parameters:
+      - description: Payment ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Payment'
+        "400":
+          description: Invalid id or request body
+          schema:
+            type: string
+        "404":
+          description: Payment not found
+          schema:
+            type: string
+        "500":
+          description: Couldn't update payment
+          schema:
+            type: string
+      summary: Update an existing payment
 swagger: "2.0"

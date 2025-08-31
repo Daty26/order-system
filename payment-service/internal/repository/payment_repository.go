@@ -2,13 +2,15 @@ package repository
 
 import (
 	"database/sql"
-
 	"github.com/Daty26/order-system/payment-service/internal/model"
 )
 
 type PaymentRep interface {
 	Save(payment model.Payment) (model.Payment, error)
 	GetAll() ([]model.Payment, error)
+	GetByID(id int) (model.Payment, error)
+	Update(id int, status model.PaymentStatus, amount float64) (model.Payment, error)
+	Delete(id int) error
 }
 type PostgresPaymentRep struct {
 	db *sql.DB
@@ -47,9 +49,33 @@ func (r *PostgresPaymentRep) GetAll() ([]model.Payment, error) {
 
 func (r *PostgresPaymentRep) GetByID(id int) (model.Payment, error) {
 	var payment model.Payment
-	err := r.db.QueryRow("SELECT id, order_id, status, amount from payment where id=$1", id).Scan(&payment.ID, &payment.OrderID, &payment.Status, &payment.Amount)
+	err := r.db.QueryRow("SELECT id, order_id, status, amount from payments where id=$1", id).Scan(&payment.ID, &payment.OrderID, &payment.Status, &payment.Amount)
 	if err != nil {
 		return model.Payment{}, err
 	}
 	return payment, nil
+}
+
+func (r *PostgresPaymentRep) Update(id int, status model.PaymentStatus, amount float64) (model.Payment, error) {
+	var payment model.Payment
+	query := `update payments SET status=$1, amount=$2 where id = $3 RETURNING id,order_id, status, amount`
+	if err := r.db.QueryRow(query, status, amount, id).Scan(&payment.ID, &payment.OrderID, &payment.Status, &payment.Amount); err != nil {
+		return model.Payment{}, err
+	}
+	return payment, nil
+}
+func (r *PostgresPaymentRep) Delete(id int) error {
+	query := `Delete from payments where id = $1`
+	res, err := r.db.Exec(query, id)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
