@@ -156,8 +156,8 @@ const docTemplate = `{
                 "description": "Delete order with specified id",
                 "summary": "Delete order",
                 "responses": {
-                    "204": {
-                        "description": "No content"
+                    "200": {
+                        "description": "Ok"
                     },
                     "400": {
                         "description": "Invalid id",

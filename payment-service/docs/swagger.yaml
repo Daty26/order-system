@@ -1,3 +1,4 @@
+basePath: /
 definitions:
   api.PaymentRequest:
     properties:
@@ -27,8 +28,10 @@ definitions:
     - PaymentPending
     - PaymentCompleted
     - PaymentFailed
+host: localhost:8080
 info:
   contact: {}
+  description: Order service for the order system
 paths:
   /payments:
     get:

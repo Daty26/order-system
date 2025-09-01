@@ -1,17 +1,24 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
+	"github.com/Daty26/order-system/order-service/internal/kafka"
 	"github.com/Daty26/order-system/order-service/internal/model"
 	"github.com/Daty26/order-system/order-service/internal/repository"
+	"log"
 )
 
 type OrderService struct {
-	repo repository.OrderRep
+	repo  repository.OrderRep
+	kafka *kafka.KafkaProducer
 }
 
-func NewOrderService(repo repository.OrderRep) *OrderService {
-	return &OrderService{repo: repo}
+func NewOrderService(repo repository.OrderRep, producer *kafka.KafkaProducer) *OrderService {
+	return &OrderService{
+		repo:  repo,
+		kafka: producer,
+	}
 }
 
 func (s *OrderService) CreateOrder(item string, amount int) (model.Order, error) {
@@ -22,7 +29,21 @@ func (s *OrderService) CreateOrder(item string, amount int) (model.Order, error)
 		Item:   item,
 		Amount: amount,
 	}
-	return s.repo.Create(order)
+	createdOrder, err := s.repo.Create(order)
+	if err != nil {
+		return model.Order{}, err
+	}
+	createdOrderJson, err := json.Marshal(createdOrder)
+	if err != nil {
+		return createdOrder, err
+	}
+	err = s.kafka.Publish("order.created", createdOrderJson)
+	if err != nil {
+		log.Println("failed to publish topic order.created" + err.Error())
+		return model.Order{}, err
+	}
+	return createdOrder, nil
+
 }
 
 func (s *OrderService) GetOrders() ([]model.Order, error) {

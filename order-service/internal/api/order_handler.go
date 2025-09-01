@@ -93,7 +93,7 @@ func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 // DeleteOrder godoc
 // @Summary Delete order
 // @Description Delete order with specified id
-// @Success 20o "Ok"
+// @Success 200 "Ok"
 // @Failure 400 {string} string "Invalid id"
 // @Failure 500 {string} string "Couldn't delete order"
 // @Router /orders/{id} [delete]

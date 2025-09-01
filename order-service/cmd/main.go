@@ -5,10 +5,12 @@ import (
 	_ "github.com/Daty26/order-system/order-service/docs"
 	"github.com/Daty26/order-system/order-service/internal/api"
 	"github.com/Daty26/order-system/order-service/internal/db"
+	"github.com/Daty26/order-system/order-service/internal/kafka"
 	"github.com/Daty26/order-system/order-service/internal/repository"
 	"github.com/Daty26/order-system/order-service/internal/service"
 	"github.com/go-chi/chi/v5"
 	httpSwagger "github.com/swaggo/http-swagger"
+	"log"
 	"net/http"
 
 	_ "github.com/lib/pq"
@@ -23,9 +25,15 @@ func main() {
 	db.InitDB()
 	defer db.DataB.Close()
 
-	repo := repository.NewRepo(db.DataB)
+	prod, err := kafka.NewKafkaProducer([]string{"localhost:9092"})
+	if err != nil {
+		log.Fatalln("failed to create Kafka producer: " + err.Error())
+	}
+	defer prod.Close()
 
-	svc := service.NewOrderService(repo)
+	repo := repository.NewPostgresRepo(db.DataB)
+
+	svc := service.NewOrderService(repo, prod)
 
 	handler := api.NewOrderHandler(svc)
 
@@ -46,8 +54,9 @@ func main() {
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
 	fmt.Println("starting order-system on :8080")
-	err := http.ListenAndServe(":8080", r)
+	err = http.ListenAndServe(":8080", r)
 	if err != nil {
+		log.Fatalln("couldn't start the server")
 		return
 	}
 }

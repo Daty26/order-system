@@ -13,6 +13,9 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
+// @description Order service for the order system
+// @host localhost:8080
+// @BasePath /
 func main() {
 	db.InitDB()
 	defer db.DataDB.Close()
