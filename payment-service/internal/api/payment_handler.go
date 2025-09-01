@@ -74,12 +74,12 @@ func (s *PaymentHandler) UpdatePayment(w http.ResponseWriter, r *http.Request) {
 		Amount float64             `json:"amount"`
 	}
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "Invalid request"+err.Error())
+		ErrorResponse(w, http.StatusBadRequest, "Invalid request: "+err.Error())
 		return
 	}
 	payment, err := s.paymentService.UpdatePayment(id, req.Status, req.Amount)
 	if err != nil {
-		ErrorResponse(w, http.StatusInternalServerError, "Couldn't update the payment"+err.Error())
+		ErrorResponse(w, http.StatusInternalServerError, "Couldn't update the payment: "+err.Error())
 		return
 	}
 	SuccessPayment(w, http.StatusOK, payment)

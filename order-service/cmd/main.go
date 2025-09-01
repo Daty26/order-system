@@ -23,7 +23,7 @@ func main() {
 	db.InitDB()
 	defer db.DataB.Close()
 
-	repo := repository.NewPostgresRepo(db.DataB)
+	repo := repository.NewRepo(db.DataB)
 
 	svc := service.NewOrderService(repo)
 

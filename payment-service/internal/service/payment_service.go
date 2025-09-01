@@ -41,6 +41,9 @@ func (s *PaymentService) UpdatePayment(id int, status model.PaymentStatus, amoun
 	if id < 0 {
 		return model.Payment{}, errors.New("invalid id")
 	}
+	if status != model.PaymentPending && status != model.PaymentCompleted && status != model.PaymentFailed {
+		return model.Payment{}, errors.New("incorrect type of status")
+	}
 	if amount < 0 {
 		return model.Payment{}, errors.New("invalid amount")
 	}
