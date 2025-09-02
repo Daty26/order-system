@@ -15,7 +15,7 @@ func NewPaymentService(payRep repository.PaymentRep) *PaymentService {
 	return &PaymentService{paymentRep: payRep}
 }
 
-func (s *PaymentService) ProcessPayment(orderID int, amount float64) (model.Payment, error) {
+func (s *PaymentService) ProcessPayment(orderID int, amount int) (model.Payment, error) {
 	if amount <= 0 {
 		return model.Payment{}, errors.New("amount can't be negative")
 	}

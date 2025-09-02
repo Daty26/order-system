@@ -12,5 +12,5 @@ type Payment struct {
 	ID      int           `json:"id"`
 	OrderID int           `json:"orderID"`
 	Status  PaymentStatus `json:"status"`
-	Amount  float64       `json:"amount"`
+	Amount  int           `json:"amount"`
 }

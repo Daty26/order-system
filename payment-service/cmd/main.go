@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/Daty26/order-system/payment-service/internal/kafka"
+	"log"
 	"net/http"
 
 	_ "github.com/Daty26/order-system/payment-service/docs"
@@ -13,14 +15,23 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
-// @description Order service for the order system
+// @description Payment service for the order system
 // @host localhost:8080
 // @BasePath /
 func main() {
 	db.InitDB()
 	defer db.DataDB.Close()
+
 	repo := repository.NewPostgresRep(db.DataDB)
 	srv := service.NewPaymentService(repo)
+	consumer, err := kafka.NewKafkaConsumer([]string{"localhost:9092"}, srv)
+	if err != nil {
+		log.Fatalf("failed to create Kafka consumer: %v", err)
+	}
+	if err = consumer.Consume("order.created"); err != nil {
+		log.Fatalf("failed to start consumer: %v", err)
+	}
+
 	handler := api.NewRepoPyament(srv)
 
 	r := chi.NewRouter()
@@ -39,8 +50,8 @@ func main() {
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 	fmt.Println("starting payment servive on port 8081")
-	err := http.ListenAndServe(":8081", r)
+	err = http.ListenAndServe(":8081", r)
 	if err != nil {
-		return
+		log.Fatalf("failed to start server: %v", err)
 	}
 }
