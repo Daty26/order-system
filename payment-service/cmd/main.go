@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/Daty26/order-system/payment-service/internal/kafka"
 	"log"
 	"net/http"
+
+	"github.com/Daty26/order-system/payment-service/internal/kafka"
 
 	_ "github.com/Daty26/order-system/payment-service/docs"
 	"github.com/Daty26/order-system/payment-service/internal/api"
@@ -22,8 +23,14 @@ func main() {
 	db.InitDB()
 	defer db.DataDB.Close()
 
+	producer, err := kafka.NewKafkaProducer([]string{"localhost:9092"})
+	if err != nil {
+		log.Fatalf("couldn't create producer: %v", err)
+	}
+	defer producer.Close()
+
 	repo := repository.NewPostgresRep(db.DataDB)
-	srv := service.NewPaymentService(repo)
+	srv := service.NewPaymentService(repo, producer)
 	consumer, err := kafka.NewKafkaConsumer([]string{"localhost:9092"}, srv)
 	if err != nil {
 		log.Fatalf("failed to create Kafka consumer: %v", err)
@@ -31,7 +38,6 @@ func main() {
 	if err = consumer.Consume("order.created"); err != nil {
 		log.Fatalf("failed to start consumer: %v", err)
 	}
-
 	handler := api.NewRepoPyament(srv)
 
 	r := chi.NewRouter()

@@ -3,12 +3,14 @@ package service
 import (
 	"errors"
 
+	"github.com/Daty26/order-system/payment-service/internal/kafka"
 	"github.com/Daty26/order-system/payment-service/internal/model"
 	"github.com/Daty26/order-system/payment-service/internal/repository"
 )
 
 type PaymentService struct {
 	paymentRep repository.PaymentRep
+	producer   *kafka.KafkaProducer
 }
 
 func NewPaymentService(payRep repository.PaymentRep) *PaymentService {
@@ -37,6 +39,7 @@ func (s *PaymentService) GetPaymentByID(id int) (model.Payment, error) {
 	}
 	return s.paymentRep.GetByID(id)
 }
+
 func (s *PaymentService) UpdatePayment(id int, status model.PaymentStatus, amount float64) (model.Payment, error) {
 	if id < 0 {
 		return model.Payment{}, errors.New("invalid id")

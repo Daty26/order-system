@@ -150,7 +150,7 @@ func (s *PaymentHandler) DeletePayment(w http.ResponseWriter, r *http.Request) {
 func (s *PaymentHandler) GetPayments(w http.ResponseWriter, r *http.Request) {
 	payments, err := s.paymentService.GetAllPayments()
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "Couldn't fetch orders")
+		ErrorResponse(w, http.StatusBadRequest, "Couldn't fetch orders: "+err.Error())
 		return
 	}
 	SuccessPayment(w, http.StatusOK, payments)
