@@ -1,8 +1,9 @@
-Create table if not exists notifications(
-    id SERIAL PRIMARY KEY,
-    order_id INT NOT NULL, 
-    payment_id INT not null, 
-    status VARCHAR(20) not Null,
-    message TEXT, 
-    created_at TIMESTAMP DEFAULT now()
- )
+create table IF NOT EXISTS notifications (
+  id SERIAL PRIMARY KEY,
+  order_id int not null,
+  payment_id int not null,
+  status varchar(20) not null check (status IN ('PENDING','SENT','FAILED')),
+  message TEXT,
+  created_at timestamp default now()
+);
+
