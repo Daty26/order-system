@@ -56,7 +56,7 @@ func main() {
 	fmt.Println("starting order-system on :8080")
 	err = http.ListenAndServe(":8080", r)
 	if err != nil {
-		log.Fatalln("couldn't start the server")
+		log.Fatalln("couldn't start the server: " + err.Error())
 		return
 	}
 }

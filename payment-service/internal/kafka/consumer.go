@@ -1,23 +1,22 @@
 package kafka
 
 import (
-	"encoding/json"
-	"fmt"
-	"github.com/Daty26/order-system/payment-service/internal/service"
 	"github.com/IBM/sarama"
 )
 
+type MessageHandler func(value []byte)
+
 type KafkaConsumer struct {
 	consumer sarama.Consumer
-	service  *service.PaymentService
+	handler  MessageHandler
 }
 
-func NewKafkaConsumer(broker []string, svc *service.PaymentService) (*KafkaConsumer, error) {
+func NewKafkaConsumer(broker []string, handler MessageHandler) (*KafkaConsumer, error) {
 	c, err := sarama.NewConsumer(broker, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &KafkaConsumer{consumer: c, service: svc}, nil
+	return &KafkaConsumer{consumer: c, handler: handler}, nil
 }
 
 func (kc *KafkaConsumer) Consume(topic string) error {
@@ -28,22 +27,11 @@ func (kc *KafkaConsumer) Consume(topic string) error {
 
 	go func() {
 		for msg := range partition.Messages() {
-			fmt.Println("Received: ", string(msg.Value))
-			var order struct {
-				ID     int    `json:"id"`
-				Item   string `json:"item"`
-				Amount int    `json:"amount"`
-			}
-			if err := json.Unmarshal(msg.Value, &order); err != nil {
-				fmt.Println("failed td parse order: ", order)
-				continue
-			}
-
-			_, err := kc.service.ProcessPayment(order.ID, order.Amount)
-			if err != nil {
-				fmt.Println("failed to process payment:", err)
-			}
+			kc.handler(msg.Value)
 		}
 	}()
 	return err
+}
+func (kc *KafkaConsumer) Close() error {
+	return kc.consumer.Close()
 }

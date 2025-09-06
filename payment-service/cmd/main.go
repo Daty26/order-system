@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -30,14 +31,34 @@ func main() {
 	defer producer.Close()
 
 	repo := repository.NewPostgresRep(db.DataDB)
-	srv := service.NewPaymentService(repo, producer)
-	consumer, err := kafka.NewKafkaConsumer([]string{"localhost:9092"}, srv)
+	srv := service.NewPaymentService(repo)
+
+	type orderCreated struct {
+		ID     int    `json:"id"`
+		Item   string `json:"item"`
+		Amount int    `json:"amount"`
+	}
+
+	consumeOrderCreated := func(value []byte) {
+		var order orderCreated
+		if err := json.Unmarshal(value, &order); err != nil {
+			log.Println("kafka handler: bad payload:", err)
+			return
+		}
+		if _, err := srv.ProcessPayment(order.ID, order.Amount); err != nil {
+			log.Println("kafka handler: process payment failed:", err)
+			return
+		}
+		log.Printf("Processed payment for order %d\n", order.ID)
+	}
+	consumer, err := kafka.NewKafkaConsumer([]string{"localhost:9092"}, consumeOrderCreated)
 	if err != nil {
 		log.Fatalf("failed to create Kafka consumer: %v", err)
 	}
 	if err = consumer.Consume("order.created"); err != nil {
 		log.Fatalf("failed to start consumer: %v", err)
 	}
+	defer consumer.Close()
 	handler := api.NewRepoPyament(srv)
 
 	r := chi.NewRouter()
@@ -55,7 +76,7 @@ func main() {
 	r.Delete("/payments/{id}", handler.DeletePayment)
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
-	fmt.Println("starting payment servive on port 8081")
+	fmt.Println("starting payment service on port 8081")
 	err = http.ListenAndServe(":8081", r)
 	if err != nil {
 		log.Fatalf("failed to start server: %v", err)
