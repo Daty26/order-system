@@ -50,11 +50,7 @@ func (s *OrderService) GetOrders() ([]model.Order, error) {
 	return s.repo.GetAll()
 }
 func (s *OrderService) GetOrderByID(id int) (model.Order, error) {
-	order, err := s.repo.GetByID(id)
-	if err != nil {
-		return model.Order{}, err
-	}
-	return order, nil
+	return s.repo.GetByID(id)
 }
 func (s *OrderService) UpdateOrder(id int, item string, amount int) (model.Order, error) {
 	if item == "" || amount <= 0 {

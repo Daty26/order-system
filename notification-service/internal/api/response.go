@@ -11,7 +11,7 @@ type Response struct {
 	Error string      `json:"error"`
 }
 
-func SuccessPayment(w http.ResponseWriter, status int, data interface{}) {
+func SuccessResp(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	err := json.NewEncoder(w).Encode(Response{Data: data})

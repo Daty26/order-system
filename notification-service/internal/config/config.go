@@ -2,6 +2,7 @@ package config
 
 import "fmt"
 
+// chnagew to env var
 const (
 	Host     = "localhost"
 	Port     = 5432

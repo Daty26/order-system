@@ -2,6 +2,7 @@ package config
 
 import "fmt"
 
+// chnage to vcar
 const (
 	Host     = "localhost"
 	port     = 5432

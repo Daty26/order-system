@@ -2,6 +2,7 @@ package config
 
 import "fmt"
 
+// change to env var
 var (
 	Host     = "localhost"
 	Port     = 5432

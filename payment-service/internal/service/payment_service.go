@@ -1,11 +1,13 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
-
+	"fmt"
 	"github.com/Daty26/order-system/payment-service/internal/kafka"
 	"github.com/Daty26/order-system/payment-service/internal/model"
 	"github.com/Daty26/order-system/payment-service/internal/repository"
+	"log"
 )
 
 type PaymentService struct {
@@ -13,8 +15,8 @@ type PaymentService struct {
 	producer   *kafka.KafkaProducer
 }
 
-func NewPaymentService(payRep repository.PaymentRep) *PaymentService {
-	return &PaymentService{paymentRep: payRep}
+func NewPaymentService(payRep repository.PaymentRep, prod *kafka.KafkaProducer) *PaymentService {
+	return &PaymentService{paymentRep: payRep, producer: prod}
 }
 
 func (s *PaymentService) ProcessPayment(orderID int, amount int) (model.Payment, error) {
@@ -26,7 +28,21 @@ func (s *PaymentService) ProcessPayment(orderID int, amount int) (model.Payment,
 		Status:  model.PaymentCompleted,
 		Amount:  amount,
 	}
-	return s.paymentRep.Save(payment)
+	savedPayment, err := s.paymentRep.Save(payment)
+	if err != nil {
+		return model.Payment{}, err
+	}
+	savedPaymentJson, err := json.Marshal(savedPayment)
+	if err != nil {
+		return model.Payment{}, err
+	}
+	err = s.producer.Publish("payment.completed", savedPaymentJson)
+	if err != nil {
+		log.Fatalln("Couldn't publish topic payment.completed: " + err.Error())
+		return model.Payment{}, err
+	}
+	fmt.Println(string(savedPaymentJson))
+	return savedPayment, nil
 }
 
 func (s *PaymentService) GetAllPayments() ([]model.Payment, error) {

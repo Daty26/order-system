@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/Daty26/order-system/notification-service/internal/api"
 	"github.com/Daty26/order-system/notification-service/internal/db"
+	"github.com/Daty26/order-system/notification-service/internal/kafka"
+	"github.com/Daty26/order-system/notification-service/internal/model"
 	"github.com/Daty26/order-system/notification-service/internal/repository"
 	"github.com/Daty26/order-system/notification-service/internal/service"
 	"github.com/go-chi/chi/v5"
@@ -14,16 +17,56 @@ import (
 func main() {
 	db.InitDB()
 	defer db.DataDB.Close()
-	fmt.Println(1)
+	//fmt.Println(1)
 	rep := repository.NewNotificationRepo(db.DataDB)
-	fmt.Println(2)
 	serv := service.NewNotificationService(rep)
 	handler := api.NewNotificationHandler(serv)
-	r := chi.NewRouter()
-	r.Post("/notification", handler.InsertNotification)
-	err := http.ListenAndServe(":8082", r)
+
+	consumePaymentCreated := func(value []byte) {
+		fmt.Println(string(value))
+		var paymentCreated model.PaymentCreated
+		if err := json.Unmarshal(value, &paymentCreated); err != nil {
+			log.Println("Kafka handler, notification consumer: " + err.Error())
+			return
+		}
+		fmt.Println(paymentCreated)
+		if _, err := serv.Insert(paymentCreated.OrderID, paymentCreated.PaymentID, model.NotificationSent, "payment has been created"); err != nil {
+			log.Println("Kafka process for notification service failed: ", err)
+			return
+		}
+		log.Printf("Notification is created for orderid=%v, paymentid=%v", paymentCreated.OrderID, paymentCreated.PaymentID)
+	}
+	consumer, err := kafka.NewKafkaConsumer([]string{"localhost:9092"}, consumePaymentCreated)
 	if err != nil {
-		log.Fatalln(err.Error())
+		log.Printf("Failed to create new kafka consumer: %v", err.Error())
 		return
+	}
+	go func() {
+		log.Println("Consuming topic payment.completed")
+		if err := consumer.Consume("payment.completed"); err != nil {
+			log.Printf("kafka consumer error: %v", err)
+		}
+	}()
+	defer consumer.Close()
+
+	r := chi.NewRouter()
+	r.Get("/health", func(writer http.ResponseWriter, request *http.Request) {
+		_, err := writer.Write([]byte("notification-service is working"))
+		if err != nil {
+			return
+		}
+	})
+	r.Post("/notifications", handler.InsertNotification)
+	r.Get("/notifications", handler.GetAllNotifications)
+	r.Get("/notifications/{id}", handler.GetNotificationByID)
+	r.Get("/notifications/status/{status}", handler.GetNotificationsByStatus)
+	r.Put("/notifications/{id}/status", handler.UpdateNotificationStatusByID)
+	r.Delete("/notifications/{id}", handler.DeleteNotificationByID)
+	if err := http.ListenAndServe(":8082", r); err != nil {
+		log.Fatal(err)
+	}
+	err = http.ListenAndServe(":8083", r)
+	if err != nil {
+		log.Fatal(err.Error())
 	}
 }

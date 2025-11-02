@@ -31,12 +31,12 @@ func main() {
 	defer producer.Close()
 
 	repo := repository.NewPostgresRep(db.DataDB)
-	srv := service.NewPaymentService(repo)
+	srv := service.NewPaymentService(repo, producer)
 
 	type orderCreated struct {
-		ID     int    `json:"id"`
-		Item   string `json:"item"`
-		Amount int    `json:"amount"`
+		PaymentId int    `json:"payment_id"`
+		Item      string `json:"item"`
+		Amount    int    `json:"amount"`
 	}
 
 	consumeOrderCreated := func(value []byte) {
@@ -45,11 +45,11 @@ func main() {
 			log.Println("kafka handler: bad payload:", err)
 			return
 		}
-		if _, err := srv.ProcessPayment(order.ID, order.Amount); err != nil {
+		if _, err := srv.ProcessPayment(order.PaymentId, order.Amount); err != nil {
 			log.Println("kafka handler: process payment failed:", err)
 			return
 		}
-		log.Printf("Processed payment for order %d\n", order.ID)
+		log.Printf("Processed payment for order %d\n", order.PaymentId)
 	}
 	consumer, err := kafka.NewKafkaConsumer([]string{"localhost:9092"}, consumeOrderCreated)
 	if err != nil {

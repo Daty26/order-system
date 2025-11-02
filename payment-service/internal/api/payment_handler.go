@@ -41,7 +41,7 @@ func (s *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 	}
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "Invalid Request")
+		ErrorResponse(w, http.StatusBadRequest, "Invalid Request: "+err.Error())
 		return
 	}
 	payment, err := s.paymentService.ProcessPayment(req.OrderID, req.Amount)
