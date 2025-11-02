@@ -16,6 +16,8 @@ order-service/migrations/
 bin/
 *.log
 
+
+.env
 # Vendor
 /vendor/
 # IDE stuff

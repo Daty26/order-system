@@ -3,6 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"net/http"
+
 	"github.com/Daty26/order-system/notification-service/internal/api"
 	"github.com/Daty26/order-system/notification-service/internal/db"
 	"github.com/Daty26/order-system/notification-service/internal/kafka"
@@ -10,14 +13,12 @@ import (
 	"github.com/Daty26/order-system/notification-service/internal/repository"
 	"github.com/Daty26/order-system/notification-service/internal/service"
 	"github.com/go-chi/chi/v5"
-	"log"
-	"net/http"
 )
 
 func main() {
 	db.InitDB()
 	defer db.DataDB.Close()
-	//fmt.Println(1)
+	// fmt.Println(1)
 	rep := repository.NewNotificationRepo(db.DataDB)
 	serv := service.NewNotificationService(rep)
 	handler := api.NewNotificationHandler(serv)
