@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   kafka:
     image: confluentinc/cp-kafka:latest
@@ -40,5 +38,53 @@ services:
     depends_on:
       - kafka
       - postgres-notifications
+
+  postgres-payment:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: notifications
+    volumes:
+      - ./payment-service/migrations:/docker-entrypoint-initdb.d
+      - pgdata_payments:/varlib/postgresql/data
+    ports:
+      - "5435:5432"
+
+  payment-service:
+    build: ./payment-service
+    env_file:
+      - ./payment-service/.env
+    ports:
+      - "8081:8081"
+    depends_on:
+      - kafka
+      - postgres-payment
+
+  postgres-order:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: orders
+    volumes:
+      - ./order-service/migrations:/docker-entrypoint-initdb.d
+      - pgdata_orders:/varlib/postgresql/data
+    ports:
+      - "5433:5432"
+
+  order-service:
+    build: ./order-service
+    env_file:
+      - ./order-service/.env
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka
+      - postgres-order
+
+
 volumes:
   pgdata_notifications:
+  pgdata_payments:
+  pgdata_orders:
