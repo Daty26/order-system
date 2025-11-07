@@ -63,9 +63,6 @@ func main() {
 	r.Get("/notifications/status/{status}", handler.GetNotificationsByStatus)
 	r.Put("/notifications/{id}/status", handler.UpdateNotificationStatusByID)
 	r.Delete("/notifications/{id}", handler.DeleteNotificationByID)
-	if err := http.ListenAndServe(":8082", r); err != nil {
-		log.Fatal(err)
-	}
 	err = http.ListenAndServe(":8083", r)
 	if err != nil {
 		log.Fatal(err.Error())
