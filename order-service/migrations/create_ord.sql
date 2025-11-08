@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS orders (
     id SERIAL PRIMARY KEY,
     item VARCHAR(100) NOT NULL,
-    amount INT NOT NULL
+    quantity INT NOT NULL
 );

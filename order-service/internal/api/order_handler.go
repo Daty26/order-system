@@ -58,7 +58,7 @@ func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 
 // UpdateOrder godoc
 // @Summary Update an existing order
-// @Description Update the item and amount of an order by ID
+// @Description Update the item and quantity of an order by ID
 // @Param id path int true "Order ID"
 // @Accept json
 // @Produce json
@@ -69,8 +69,8 @@ func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 // @Router /orders/{id} [put]
 func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Item   string `json:"item"`
-		Amount int    `json:"amount"`
+		Item     string `json:"item"`
+		Quantity int    `json:"quantity"`
 	}
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
@@ -82,7 +82,7 @@ func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 		ErrorResponse(w, http.StatusBadRequest, "Couldn't convert the req body to specified format")
 		return
 	}
-	order, err := h.service.UpdateOrder(id, req.Item, req.Amount)
+	order, err := h.service.UpdateOrder(id, req.Item, req.Quantity)
 	if err != nil {
 		ErrorResponse(w, http.StatusInternalServerError, "Couldn't update order")
 		return
@@ -117,7 +117,7 @@ func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 
 // CreateOrder godoc
 // @Summary Create new order
-// @Description Create new order with item and amount
+// @Description Create new order with item and quantity
 // @Accept json
 // @Produce json
 // @Param order body model.Order true "Order data"
@@ -126,14 +126,14 @@ func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 // @Router /orders [post]
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Item   string `json:"item"`
-		Amount int    `json:"amount"`
+		Item     string `json:"item"`
+		Quantity int    `json:"quantity"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		ErrorResponse(w, http.StatusBadRequest, "invalid request format")
 		return
 	}
-	order, err := h.service.CreateOrder(req.Item, req.Amount)
+	order, err := h.service.CreateOrder(req.Item, req.Quantity)
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, err.Error())
 		return

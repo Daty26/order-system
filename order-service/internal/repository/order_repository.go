@@ -9,7 +9,7 @@ type OrderRep interface {
 	Create(order model.Order) (model.Order, error)
 	GetAll() ([]model.Order, error)
 	GetByID(id int) (model.Order, error)
-	Update(id int, item string, amount int) (model.Order, error)
+	Update(id int, item string, quantity int) (model.Order, error)
 	Delete(id int) error
 }
 type PostgresOrderRepo struct {
@@ -20,15 +20,15 @@ func NewPostgresRepo(db *sql.DB) *PostgresOrderRepo {
 	return &PostgresOrderRepo{db: db}
 }
 func (r *PostgresOrderRepo) Create(order model.Order) (model.Order, error) {
-	query := `insert into orders (item, amount) values ($1, $2) RETURNING id`
-	err := r.db.QueryRow(query, order.Item, order.Amount).Scan(&order.ID)
+	query := `insert into orders (item, quantity) values ($1, $2) RETURNING id`
+	err := r.db.QueryRow(query, order.Item, order.Quantity).Scan(&order.ID)
 	if err != nil {
 		return model.Order{}, err
 	}
 	return order, nil
 }
 func (r *PostgresOrderRepo) GetAll() ([]model.Order, error) {
-	rows, err := r.db.Query(`select id, item, amount from orders`)
+	rows, err := r.db.Query(`select id, item, quantity from orders`)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func (r *PostgresOrderRepo) GetAll() ([]model.Order, error) {
 	var orders []model.Order
 	for rows.Next() {
 		var o model.Order
-		if err := rows.Scan(&o.ID, &o.Item, &o.Amount); err != nil {
+		if err := rows.Scan(&o.ID, &o.Item, &o.Quantity); err != nil {
 			return nil, err
 		}
 		orders = append(orders, o)
@@ -50,15 +50,15 @@ func (r *PostgresOrderRepo) GetAll() ([]model.Order, error) {
 }
 func (r *PostgresOrderRepo) GetByID(id int) (model.Order, error) {
 	var order model.Order
-	err := r.db.QueryRow(`select id, item, amount from orders WHERE id = $1`, id).Scan(&order.ID, &order.Item, &order.Amount)
+	err := r.db.QueryRow(`select id, item, quantity from orders WHERE id = $1`, id).Scan(&order.ID, &order.Item, &order.Quantity)
 	if err != nil {
 		return model.Order{}, err
 	}
 	return order, nil
 }
-func (r *PostgresOrderRepo) Update(id int, item string, amount int) (model.Order, error) {
+func (r *PostgresOrderRepo) Update(id int, item string, quantity int) (model.Order, error) {
 	var order model.Order
-	err := r.db.QueryRow(`update orders set item = $1, amount = $2 where id = $3 RETURNING id, item, amount`, item, amount, id).Scan(&order.ID, &order.Item, &order.Amount)
+	err := r.db.QueryRow(`update orders set item = $1, quantity = $2 where id = $3 RETURNING id, item, quantity`, item, quantity, id).Scan(&order.ID, &order.Item, &order.Quantity)
 	if err != nil {
 		return model.Order{}, err
 	}

@@ -21,13 +21,13 @@ func NewOrderService(repo repository.OrderRep, producer *kafka.KafkaProducer) *O
 	}
 }
 
-func (s *OrderService) CreateOrder(item string, amount int) (model.Order, error) {
-	if item == "" || amount <= 0 {
+func (s *OrderService) CreateOrder(item string, quantity int) (model.Order, error) {
+	if item == "" || quantity <= 0 {
 		return model.Order{}, errors.New("invalid order data")
 	}
 	order := model.Order{
-		Item:   item,
-		Amount: amount,
+		Item:     item,
+		Quantity: quantity,
 	}
 	createdOrder, err := s.repo.Create(order)
 	if err != nil {
@@ -52,11 +52,11 @@ func (s *OrderService) GetOrders() ([]model.Order, error) {
 func (s *OrderService) GetOrderByID(id int) (model.Order, error) {
 	return s.repo.GetByID(id)
 }
-func (s *OrderService) UpdateOrder(id int, item string, amount int) (model.Order, error) {
-	if item == "" || amount <= 0 {
+func (s *OrderService) UpdateOrder(id int, item string, quantity int) (model.Order, error) {
+	if item == "" || quantity <= 0 {
 		return model.Order{}, errors.New("invalid request value")
 	}
-	order, err := s.repo.Update(id, item, amount)
+	order, err := s.repo.Update(id, item, quantity)
 	if err != nil {
 		return model.Order{}, err
 	}

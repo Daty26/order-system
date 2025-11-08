@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/Daty26/order-system/inventory-service/internal/api"
 	"github.com/Daty26/order-system/inventory-service/internal/db"
+	"github.com/Daty26/order-system/inventory-service/internal/kafka"
 	"github.com/Daty26/order-system/inventory-service/internal/repository"
 	"github.com/Daty26/order-system/inventory-service/internal/service"
 	"github.com/go-chi/chi/v5"
@@ -17,6 +18,15 @@ func main() {
 	svc := service.NewInventoryService(repo)
 	handler := api.NewInventoryHandler(svc)
 	r := chi.NewRouter()
+	go func() {
+		consumer, err := kafka.NewKafkaConsumer([]string{"localhost:9092"}, svc)
+		if err != nil {
+			log.Fatalf("couldn't start consumer: %s" + err.Error())
+		}
+		if err = consumer.Consume("order.created"); err != nil {
+			log.Fatalf("couldn't consume the topic: " + err.Error())
+		}
+	}()
 	r.Get("/products", handler.GetAllProducts)
 	r.Post("/products", handler.InsertProduct)
 	r.Put("/products/{id}", handler.UpdateQuantity)
