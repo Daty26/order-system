@@ -9,6 +9,7 @@ type InventoryRepository interface {
 	GetAll() ([]model.Product, error)
 	Insert(product model.Product) (model.Product, error)
 	UpdateQuantity(id int, quanity int) (model.Product, error)
+	GetByID(id int) (model.Product, error)
 }
 
 type PostgresInventoryRepo struct {
@@ -38,6 +39,14 @@ func (pr *PostgresInventoryRepo) GetAll() ([]model.Product, error) {
 		return products, err
 	}
 	return products, nil
+}
+func (pr *PostgresInventoryRepo) GetByID(id int) (model.Product, error) {
+	var product model.Product
+	query := `Select id, name, quantity, created_at, updated_at from inventory where id=$1`
+	if err := pr.db.QueryRow(query, id).Scan(&product.ID, &product.Name, &product.Quantity, &product.CreatedAt, &product.UpdatedAt); err != nil {
+		return model.Product{}, err
+	}
+	return product, nil
 }
 func (pr *PostgresInventoryRepo) Insert(product model.Product) (model.Product, error) {
 	var insertedProduct model.Product

@@ -61,7 +61,9 @@ func (s *OrderService) UpdateOrder(id int, item string, quantity int) (model.Ord
 		return model.Order{}, err
 	}
 	return order, nil
-
+}
+func (s *OrderService) ReduceStock(productID int, quantity int) error {
+	
 }
 func (s *OrderService) DeleteOrder(id int) error {
 	if id <= 0 {

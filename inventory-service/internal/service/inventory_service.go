@@ -36,3 +36,6 @@ func (is *InventoryService) UpdateQuantity(id int, quantity int) (model.Product,
 	return is.repo.UpdateQuantity(id, quantity)
 
 }
+func (is *InventoryService) ReduceStock(productId int, quantity int) error {
+	is.repo.
+}
