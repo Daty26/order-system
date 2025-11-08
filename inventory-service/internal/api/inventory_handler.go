@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"github.com/Daty26/order-system/inventory-service/internal/model"
 	"github.com/Daty26/order-system/inventory-service/internal/service"
+	"github.com/go-chi/chi/v5"
 	"net/http"
+	"strconv"
 )
 
 type InventoryHandler struct {
@@ -42,5 +44,25 @@ func (ih *InventoryHandler) InsertProduct(w http.ResponseWriter, r *http.Request
 		return
 	}
 	SuccessResponse(w, http.StatusCreated, productCrteated)
-
+}
+func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		ErrorResponse(w, http.StatusBadRequest, "Couldn't convert string to int: "+err.Error())
+		return
+	}
+	var req struct {
+		Quantity int `json:"quantity"`
+	}
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		ErrorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	quantity, err := ih.serv.UpdateQuantity(id, req.Quantity)
+	if err != nil {
+		ErrorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	SuccessResponse(w, http.StatusOK, quantity)
 }

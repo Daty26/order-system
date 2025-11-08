@@ -17,8 +17,9 @@ func main() {
 	svc := service.NewInventoryService(repo)
 	handler := api.NewInventoryHandler(svc)
 	r := chi.NewRouter()
-	r.Get("/prosucts", handler.GetAllProducts)
+	r.Get("/products", handler.GetAllProducts)
 	r.Post("/products", handler.InsertProduct)
+	r.Put("/products/{id}", handler.UpdateQuantity)
 	err := http.ListenAndServe(":8084", r)
 	if err != nil {
 		log.Fatalf(err.Error())

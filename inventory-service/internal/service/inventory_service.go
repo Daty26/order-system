@@ -26,3 +26,13 @@ func (is *InventoryService) Insert(product model.Product) (model.Product, error)
 	}
 	return is.repo.Insert(product)
 }
+func (is *InventoryService) UpdateQuantity(id int, quantity int) (model.Product, error) {
+	if id < 0 {
+		return model.Product{}, errors.New("incorrect id")
+	}
+	if quantity < 0 {
+		return model.Product{}, errors.New("quantity can't be less than 0")
+	}
+	return is.repo.UpdateQuantity(id, quantity)
+
+}
