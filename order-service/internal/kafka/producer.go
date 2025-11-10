@@ -1,6 +1,8 @@
 package kafka
 
-import "github.com/IBM/sarama"
+import (
+	"github.com/IBM/sarama"
+)
 
 type KafkaProducer struct {
 	producer sarama.SyncProducer

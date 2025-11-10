@@ -9,10 +9,10 @@ import (
 
 type OrderCreated struct {
 	OrderID int `json:"order_id"`
-	//Items   []struct {
-	ProductID int `json:"product_id"`
-	Quantity  int `json:"quantity"`
-	//} `json:'items"`
+	Items   []struct {
+		ProductID int `json:"product_id"`
+		Quantity  int `json:"quantity"`
+	} `json:"items"`
 }
 
 type KafkaConsumer struct {
@@ -37,17 +37,15 @@ func (kc *KafkaConsumer) Consume(topic string) error {
 	fmt.Println("Listening for messages on topic; " + topic)
 	for msg := range consumePartition.Messages() {
 		var event OrderCreated
-
 		if err := json.Unmarshal(msg.Value, &event); err != nil {
-			fmt.Println("coulnd;t parse the message: " + err.Error())
+			fmt.Println("couldn;t parse the message: " + err.Error())
 			continue
 		}
-
-		err = kc.service.ReduceStock(event.ProductID, event.Quantity)
-		if err != nil {
-			fmt.Printf("error reducing stock: %s", err.Error())
+		fmt.Printf("received order_id=%d, with %d item(s)\n", event.OrderID, len(event.Items))
+		for _, items := range event.Items {
+			err = kc.service.ReduceStock(items.ProductID, items.Quantity)
+			fmt.Printf("product_id: %d, quantity: %d\n", items.ProductID, items.Quantity)
 		}
-		fmt.Printf("product_id: %d, quantity: %d", event.ProductID, event.Quantity)
 	}
 	return nil
 }

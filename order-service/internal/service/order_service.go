@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/Daty26/order-system/order-service/internal/kafka"
 	"github.com/Daty26/order-system/order-service/internal/model"
 	"github.com/Daty26/order-system/order-service/internal/repository"
@@ -33,10 +34,20 @@ func (s *OrderService) CreateOrder(item string, quantity int) (model.Order, erro
 	if err != nil {
 		return model.Order{}, err
 	}
-	createdOrderJson, err := json.Marshal(createdOrder)
+	event := map[string]interface{}{
+		"order_id": createdOrder.ID,
+		"items": []map[string]int{{
+			"product_id": 1,
+			"quantity":   createdOrder.Quantity,
+		},
+		},
+	}
+	createdOrderJson, err := json.Marshal(event)
 	if err != nil {
 		return createdOrder, err
 	}
+	fmt.Println("topic published")
+	fmt.Println(string(createdOrderJson))
 	err = s.kafka.Publish("order.created", createdOrderJson)
 	if err != nil {
 		log.Println("failed to publish topic order.created" + err.Error())
@@ -61,9 +72,6 @@ func (s *OrderService) UpdateOrder(id int, item string, quantity int) (model.Ord
 		return model.Order{}, err
 	}
 	return order, nil
-}
-func (s *OrderService) ReduceStock(productID int, quantity int) error {
-	
 }
 func (s *OrderService) DeleteOrder(id int) error {
 	if id <= 0 {

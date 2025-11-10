@@ -34,9 +34,10 @@ func main() {
 	srv := service.NewPaymentService(repo, producer)
 
 	type orderCreated struct {
-		PaymentId int    `json:"payment_id"`
-		Item      string `json:"item"`
-		Amount    int    `json:"amount"`
+		OrderID int `json:"order_id"`
+		Items   interface {
+		} `json:"items"`
+		Quantity int `json:"quantity"`
 	}
 
 	consumeOrderCreated := func(value []byte) {
