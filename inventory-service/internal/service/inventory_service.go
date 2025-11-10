@@ -37,5 +37,17 @@ func (is *InventoryService) UpdateQuantity(id int, quantity int) (model.Product,
 
 }
 func (is *InventoryService) ReduceStock(productId int, quantity int) error {
-	is.repo.
+	product, err := is.repo.GetByID(productId)
+	if err != nil {
+		return err
+	}
+	if product.Quantity < quantity {
+		return errors.New("the product is out of stock")
+	}
+	reducedQuantity := product.Quantity - quantity
+	_, err = is.repo.UpdateQuantity(productId, reducedQuantity)
+	if err != nil {
+		return err
+	}
+	return nil
 }

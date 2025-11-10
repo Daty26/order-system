@@ -42,6 +42,11 @@ func (kc *KafkaConsumer) Consume(topic string) error {
 			fmt.Println("coulnd;t parse the message: " + err.Error())
 			continue
 		}
+
+		err = kc.service.ReduceStock(event.ProductID, event.Quantity)
+		if err != nil {
+			fmt.Printf("error reducing stock: %s", err.Error())
+		}
 		fmt.Printf("product_id: %d, quantity: %d", event.ProductID, event.Quantity)
 	}
 	return nil
