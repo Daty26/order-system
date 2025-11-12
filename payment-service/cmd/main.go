@@ -35,9 +35,10 @@ func main() {
 
 	type orderCreated struct {
 		OrderID int `json:"order_id"`
-		Items   interface {
+		Items   []struct {
+			PaymentID int `json:"payment_id"`
+			Quantity  int `json:"quantity"`
 		} `json:"items"`
-		Quantity int `json:"quantity"`
 	}
 
 	consumeOrderCreated := func(value []byte) {
@@ -46,11 +47,11 @@ func main() {
 			log.Println("kafka handler: bad payload:", err)
 			return
 		}
-		if _, err := srv.ProcessPayment(order.PaymentId, order.Amount); err != nil {
+		if _, err := srv.ProcessPayment(order.OrderID, len(order.Items)); err != nil {
 			log.Println("kafka handler: process payment failed:", err)
 			return
 		}
-		log.Printf("Processed payment for order %d\n", order.PaymentId)
+		log.Printf("Processed payment for order %d\n", order.OrderID)
 	}
 	consumer, err := kafka.NewKafkaConsumer([]string{"localhost:9092"}, consumeOrderCreated)
 	if err != nil {
