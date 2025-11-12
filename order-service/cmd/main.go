@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	_ "github.com/Daty26/order-system/order-service/docs"
 	"github.com/Daty26/order-system/order-service/internal/api"
 	"github.com/Daty26/order-system/order-service/internal/db"
@@ -53,7 +52,7 @@ func main() {
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
-	fmt.Println("starting order-system on :8080")
+	log.Println("starting order-system on :8080")
 	err = http.ListenAndServe(":8080", r)
 	if err != nil {
 		log.Fatalln("couldn't start the server: " + err.Error())

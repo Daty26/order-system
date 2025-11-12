@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/Daty26/order-system/order-service/internal/kafka"
 	"github.com/Daty26/order-system/order-service/internal/model"
 	"github.com/Daty26/order-system/order-service/internal/repository"
@@ -46,8 +45,8 @@ func (s *OrderService) CreateOrder(item string, quantity int) (model.Order, erro
 	if err != nil {
 		return createdOrder, err
 	}
-	fmt.Println("topic published")
-	fmt.Println(string(createdOrderJson))
+	log.Println("topic published")
+	log.Println(string(createdOrderJson))
 	err = s.kafka.Publish("order.created", createdOrderJson)
 	if err != nil {
 		log.Println("failed to publish topic order.created" + err.Error())

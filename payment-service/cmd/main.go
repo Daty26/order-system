@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -78,7 +77,7 @@ func main() {
 	r.Delete("/payments/{id}", handler.DeletePayment)
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
-	fmt.Println("starting payment service on port 8081")
+	log.Println("starting payment service on port 8081")
 	err = http.ListenAndServe(":8081", r)
 	if err != nil {
 		log.Fatalf("failed to start server: %v", err)

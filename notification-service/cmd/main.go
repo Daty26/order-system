@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -18,19 +17,18 @@ import (
 func main() {
 	db.InitDB()
 	defer db.DataDB.Close()
-	// fmt.Println(1)
 	rep := repository.NewNotificationRepo(db.DataDB)
 	serv := service.NewNotificationService(rep)
 	handler := api.NewNotificationHandler(serv)
 
 	consumePaymentCreated := func(value []byte) {
-		fmt.Println(string(value))
+		log.Println(string(value))
 		var paymentCreated model.PaymentCreated
 		if err := json.Unmarshal(value, &paymentCreated); err != nil {
 			log.Println("Kafka handler, notification consumer: " + err.Error())
 			return
 		}
-		fmt.Println(paymentCreated)
+		log.Println(paymentCreated)
 		if _, err := serv.Insert(paymentCreated.OrderID, paymentCreated.PaymentID, model.NotificationSent, "payment has been created"); err != nil {
 			log.Println("Kafka process for notification service failed: ", err)
 			return

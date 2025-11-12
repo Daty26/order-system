@@ -2,7 +2,6 @@ package kafka
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/Daty26/order-system/inventory-service/internal/service"
 	"github.com/IBM/sarama"
 	"log"
@@ -35,20 +34,20 @@ func (kc *KafkaConsumer) Consume(topic string) error {
 		return err
 	}
 	defer consumePartition.Close()
-	fmt.Println("Listening for messages on topic; " + topic)
+	log.Println("Listening for messages on topic; " + topic)
 	for msg := range consumePartition.Messages() {
 		var event OrderCreated
 		if err := json.Unmarshal(msg.Value, &event); err != nil {
-			fmt.Println("couldn;t parse the message: " + err.Error())
+			log.Println("couldn;t parse the message: " + err.Error())
 			continue
 		}
-		fmt.Printf("received order_id=%d, with %d item(s)\n", event.OrderID, len(event.Items))
+		log.Printf("received order_id=%d, with %d item(s)\n", event.OrderID, len(event.Items))
 		for _, items := range event.Items {
 			if err = kc.service.ReduceStock(items.ProductID, items.Quantity); err != nil {
 				log.Printf("error reducing stock for product_id=%d: %v", items.ProductID, err.Error())
 				continue
 			}
-			fmt.Printf("product_id: %d, quantity: %d\n", items.ProductID, items.Quantity)
+			log.Printf("product_id: %d, quantity: %d\n", items.ProductID, items.Quantity)
 		}
 	}
 	return nil

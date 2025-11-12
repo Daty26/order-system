@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/Daty26/order-system/payment-service/internal/kafka"
 	"github.com/Daty26/order-system/payment-service/internal/model"
 	"github.com/Daty26/order-system/payment-service/internal/repository"
@@ -41,7 +40,7 @@ func (s *PaymentService) ProcessPayment(orderID int, amount int) (model.Payment,
 		log.Fatalln("Couldn't publish topic payment.completed: " + err.Error())
 		return model.Payment{}, err
 	}
-	fmt.Println(string(savedPaymentJson))
+	log.Println(string(savedPaymentJson))
 	return savedPayment, nil
 }
 
