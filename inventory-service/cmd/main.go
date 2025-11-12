@@ -27,6 +27,12 @@ func main() {
 			log.Fatalf("couldn't consume the topic: " + err.Error())
 		}
 	}()
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write([]byte("inventory-service is healthy"))
+		if err != nil {
+			return
+		}
+	})
 	r.Get("/products", handler.GetAllProducts)
 	r.Post("/products", handler.InsertProduct)
 	r.Put("/products/{id}", handler.UpdateQuantity)

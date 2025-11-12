@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Daty26/order-system/inventory-service/internal/service"
 	"github.com/IBM/sarama"
+	"log"
 )
 
 type OrderCreated struct {
@@ -43,7 +44,10 @@ func (kc *KafkaConsumer) Consume(topic string) error {
 		}
 		fmt.Printf("received order_id=%d, with %d item(s)\n", event.OrderID, len(event.Items))
 		for _, items := range event.Items {
-			err = kc.service.ReduceStock(items.ProductID, items.Quantity)
+			if err = kc.service.ReduceStock(items.ProductID, items.Quantity); err != nil {
+				log.Printf("error reducing stock for product_id=%d: %v", items.ProductID, err.Error())
+				continue
+			}
 			fmt.Printf("product_id: %d, quantity: %d\n", items.ProductID, items.Quantity)
 		}
 	}
