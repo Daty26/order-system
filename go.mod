@@ -2,4 +2,8 @@ module github.com/Daty26/order-system
 
 go 1.25.3
 
-require golang.org/x/crypto v0.44.0 // indirect
+require (
+	github.com/go-chi/chi/v5 v5.2.3 // indirect
+	github.com/lib/pq v1.10.9 // indirect
+	golang.org/x/crypto v0.44.0 // indirect
+)
