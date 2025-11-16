@@ -1,9 +1,8 @@
-package auth
+package middleware
 
 import (
 	"context"
 	"errors"
-	"github.com/Daty26/order-system/user-service/internal/api"
 	"github.com/golang-jwt/jwt/v5"
 	"net/http"
 	"os"

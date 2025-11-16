@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/Daty26/order-system/auth"
+	"github.com/Daty26/order-system/auth/middleware"
 	"github.com/Daty26/order-system/user-service/internal/api"
 	"github.com/Daty26/order-system/user-service/internal/db"
 	"github.com/Daty26/order-system/user-service/internal/repository"
@@ -20,7 +20,7 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Group(func(r chi.Router) {
-		r.Use(auth.AuthMiddleware)
+		r.Use(middleware.AuthMiddleware)
 		r.Get("/user/me", handler.Me)
 	})
 	r.Post("/user/register", handler.CreateUser)
