@@ -35,3 +35,29 @@ func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	SuccessResponse(w, http.StatusCreated, createdUser)
 }
+
+func (uh *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Identifier string `json:"identifier"`
+		Password   string `json:"password"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		ErrorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	userLoggedIn, token, err := uh.srv.Login(req.Identifier, req.Password)
+	var resp = struct {
+		User  model.User `json:"user"`
+		Token string     `json:"token"`
+	}{}
+	resp.User = userLoggedIn
+	resp.Token = token
+
+	if err != nil {
+		ErrorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	SuccessResponse(w, http.StatusOK, resp)
+
+}

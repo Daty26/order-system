@@ -19,9 +19,9 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Group(func(r chi.Router) {
-		
+		r.Post("/user/register", handler.CreateUser)
+		r.Post("/user/login", handler.Login)
 	})
-	r.Post("/user/register", handler.CreateUser)
 	log.Println("starting user service on port 8085")
 	err := http.ListenAndServe(":8085", r)
 	if err != nil {

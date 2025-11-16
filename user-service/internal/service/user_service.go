@@ -9,6 +9,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"net/mail"
+	"os"
 	"time"
 )
 
@@ -21,6 +22,7 @@ func NewUserService(repo repository.UserRepository) *UserService {
 }
 
 var ErrInvalidCredentials = errors.New("invalid creadentials")
+var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
 func (us *UserService) CreateUser(u model.User) (model.User, error) {
 	_, err := mail.ParseAddress(u.Email)
@@ -51,10 +53,6 @@ func (us *UserService) CreateUser(u model.User) (model.User, error) {
 	u.Password = ""
 	return createdUser, nil
 }
-func (us *UserService) generateToken(u model.User) (string, error) {
-	claims := jwt
-	fmt.Printf(claims)
-}
 
 func (us *UserService) Login(identifier string, password string) (model.User, string, error) {
 
@@ -75,5 +73,9 @@ func (us *UserService) Login(identifier string, password string) (model.User, st
 		"exp":      time.Now().Add(time.Hour * 24).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return user, nil
+	tokenString, err := token.SignedString(jwtSecret)
+	if err != nil {
+		return model.User{}, "", err
+	}
+	return user, tokenString, nil
 }
