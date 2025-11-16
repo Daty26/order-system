@@ -10,6 +10,7 @@ import (
 type UserRepository interface {
 	Create(user model.User) (model.User, error)
 	GetByUsernameOrEmail(identifier string) (model.User, error)
+	GetByID(id int) (model.User, error)
 }
 type PostgresRepository struct {
 	db *sql.DB
@@ -41,6 +42,14 @@ func (pr *PostgresRepository) GetByUsernameOrEmail(identifier string) (model.Use
 	var user model.User
 	query := `Select id, username, email, password, role, created_at from users where username=$1 or email =$1`
 	if err := pr.db.QueryRow(query, identifier).Scan(&user.ID, &user.Username, &user.Email, &user.Password, &user.Role, &user.CreatedAt); err != nil {
+		return model.User{}, err
+	}
+	return user, nil
+}
+func (pr *PostgresRepository) GetByID(id int) (model.User, error) {
+	var user model.User
+	query := `Select id, username, email, password, role, created_at from users where id=$1`
+	if err := pr.db.QueryRow(query, id).Scan(&user.ID, &user.Username, &user.Email, &user.Password, &user.Role, &user.CreatedAt); err != nil {
 		return model.User{}, err
 	}
 	return user, nil

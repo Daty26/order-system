@@ -28,5 +28,4 @@ func ErrorResponse(w http.ResponseWriter, status int, error string) {
 		log.Fatalln("Couldn't encode request body: " + err.Error())
 		return
 	}
-
 }

@@ -59,5 +59,15 @@ func (uh *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	SuccessResponse(w, http.StatusOK, resp)
+}
+func (uh *UserHandler) Me(w http.ResponseWriter, r *http.Request) {
+	//username := r.Context().Value("username")
+	id := r.Context().Value("user_id").(float64)
+	user, err := uh.srv.GetByID(int(id))
+	if err != nil {
+		ErrorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	SuccessResponse(w, http.StatusOK, user)
 
 }

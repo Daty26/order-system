@@ -22,6 +22,7 @@ func NewUserService(repo repository.UserRepository) *UserService {
 }
 
 var ErrInvalidCredentials = errors.New("invalid creadentials")
+var ErrIncorrectID = errors.New("user with such id doesn't exist")
 var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
 func (us *UserService) CreateUser(u model.User) (model.User, error) {
@@ -77,5 +78,21 @@ func (us *UserService) Login(identifier string, password string) (model.User, st
 	if err != nil {
 		return model.User{}, "", err
 	}
+	user.Password = ""
 	return user, tokenString, nil
+}
+func (us *UserService) GetByID(id int) (model.User, error) {
+	if id < 0 {
+		return model.User{}, errors.New("incorrect id")
+	}
+	user, err := us.rep.GetByID(id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return model.User{}, ErrIncorrectID
+		}
+		return model.User{}, err
+	}
+	user.Password = ""
+	return user, nil
+
 }
