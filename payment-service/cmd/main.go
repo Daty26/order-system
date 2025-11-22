@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/Daty26/order-system/auth/middleware"
 	"log"
 	"net/http"
 
@@ -70,11 +71,15 @@ func main() {
 			return
 		}
 	})
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.AuthMiddleware)
+		r.Put("/payments/{id}", handler.UpdatePayment)
+		r.Get("/payments/{id}", handler.GetPaymentByID)
+		r.Post("/payments", handler.CreatePayment)
+		r.Delete("/payments/{id}", handler.DeletePayment)
+		// r.GEt payments/{userID}
+	})
 	r.Get("/payments", handler.GetPayments)
-	r.Put("/payments/{id}", handler.UpdatePayment)
-	r.Get("/payments/{id}", handler.GetPaymentByID)
-	r.Post("/payments", handler.CreatePayment)
-	r.Delete("/payments/{id}", handler.DeletePayment)
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 	log.Println("starting payment service on port 8081")

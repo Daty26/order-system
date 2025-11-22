@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"github.com/Daty26/order-system/auth/response"
 	"github.com/Daty26/order-system/inventory-service/internal/model"
 	"github.com/Daty26/order-system/inventory-service/internal/service"
 	"github.com/go-chi/chi/v5"
@@ -20,7 +19,7 @@ func NewInventoryHandler(serv *service.InventoryService) *InventoryHandler {
 func (ih *InventoryHandler) GetAllProducts(w http.ResponseWriter, r *http.Request) {
 	products, err := ih.serv.GetAll()
 	if err != nil {
-		response.ErrorResponse(w, http.StatusInternalServerError, err.Error())
+		ErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	SuccessResponse(w, http.StatusOK, products)

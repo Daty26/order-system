@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/Daty26/order-system/auth/middleware"
 	_ "github.com/Daty26/order-system/order-service/docs"
 	"github.com/Daty26/order-system/order-service/internal/api"
 	"github.com/Daty26/order-system/order-service/internal/db"
@@ -43,12 +44,14 @@ func main() {
 			return
 		}
 	})
-
-	r.Get("/orders", handler.GetOrders)
-	r.Get("/orders/{id}", handler.GetOrderByID)
-	r.Put("/orders/{id}", handler.UpdateOrder)
-	r.Delete("/orders/{id}", handler.DeleteOrder)
-	r.Post("/orders", handler.CreateOrder)
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.AuthMiddleware)
+		r.Put("/orders/{id}", handler.UpdateOrder)
+		r.Delete("/orders/{id}", handler.DeleteOrder)
+		r.Post("/orders", handler.CreateOrder)
+		r.Get("/orders", handler.GetOrders)
+		r.Get("/orders/{id}", handler.GetOrderByID)
+	})
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 

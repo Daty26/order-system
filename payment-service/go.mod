@@ -1,8 +1,9 @@
 module github.com/Daty26/order-system/payment-service
 
-go 1.24.4
+go 1.25.3
 
 require (
+	github.com/Daty26/order-system/auth v0.0.0-20251119124622-7f052df524f5
 	github.com/IBM/sarama v1.46.0
 	github.com/go-chi/chi/v5 v5.2.2
 	github.com/lib/pq v1.10.9
@@ -20,6 +21,7 @@ require (
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
 	github.com/go-openapi/spec v0.20.6 // indirect
 	github.com/go-openapi/swag v0.19.15 // indirect
+	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/jcmturner/aescts/v2 v2.0.0 // indirect

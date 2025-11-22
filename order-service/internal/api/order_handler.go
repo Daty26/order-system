@@ -43,6 +43,7 @@ func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 // @Failure 404 {string} string "Order not found"
 // @Router /orders/{id} [get]
 func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
+	//fmt.Println(r.Context().Value("username"))
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, "Invalid ID")

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/Daty26/order-system/auth/middleware"
 	"log"
 	"net/http"
 
@@ -55,12 +56,15 @@ func main() {
 			return
 		}
 	})
-	r.Post("/notifications", handler.InsertNotification)
-	r.Get("/notifications", handler.GetAllNotifications)
-	r.Get("/notifications/{id}", handler.GetNotificationByID)
-	r.Get("/notifications/status/{status}", handler.GetNotificationsByStatus)
-	r.Put("/notifications/{id}/status", handler.UpdateNotificationStatusByID)
-	r.Delete("/notifications/{id}", handler.DeleteNotificationByID)
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.AuthMiddleware)
+		r.Post("/notifications", handler.InsertNotification)
+		r.Get("/notifications", handler.GetAllNotifications)
+		r.Get("/notifications/{id}", handler.GetNotificationByID)
+		r.Get("/notifications/status/{status}", handler.GetNotificationsByStatus)
+		r.Put("/notifications/{id}/status", handler.UpdateNotificationStatusByID)
+		r.Delete("/notifications/{id}", handler.DeleteNotificationByID)
+	})
 	err = http.ListenAndServe(":8083", r)
 	if err != nil {
 		log.Fatal(err.Error())

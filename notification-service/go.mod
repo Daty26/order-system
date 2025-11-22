@@ -1,8 +1,9 @@
 module github.com/Daty26/order-system/notification-service
 
-go 1.23.4
+go 1.25.3
 
 require (
+	github.com/Daty26/order-system/auth v0.0.0-20251119124622-7f052df524f5
 	github.com/IBM/sarama v1.46.0
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/lib/pq v1.10.9
@@ -13,6 +14,7 @@ require (
 	github.com/eapache/go-resiliency v1.7.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
+	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
