@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS orders (
     id SERIAL PRIMARY KEY,
     item VARCHAR(100) NOT NULL,
-    quantity INT NOT NULL
+    quantity INT NOT NULL,
+    user_id INT not null
 );

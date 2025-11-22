@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"github.com/Daty26/order-system/order-service/internal/model"
 	"github.com/Daty26/order-system/order-service/internal/service"
 	"github.com/go-chi/chi/v5"
 	"net/http"
@@ -43,7 +44,6 @@ func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 // @Failure 404 {string} string "Order not found"
 // @Router /orders/{id} [get]
 func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
-	//fmt.Println(r.Context().Value("username"))
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, "Invalid ID")
@@ -69,6 +69,8 @@ func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {string} string "Couldn't update order"
 // @Router /orders/{id} [put]
 func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
+	userIdFloat := r.Context().Value("user_id").(float64)
+	userId := int(userIdFloat)
 	var req struct {
 		Item     string `json:"item"`
 		Quantity int    `json:"quantity"`
@@ -83,7 +85,7 @@ func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 		ErrorResponse(w, http.StatusBadRequest, "Couldn't convert the req body to specified format")
 		return
 	}
-	order, err := h.service.UpdateOrder(id, req.Item, req.Quantity)
+	order, err := h.service.UpdateOrder(id, req.Item, req.Quantity, userId)
 	if err != nil {
 		ErrorResponse(w, http.StatusInternalServerError, "Couldn't update order")
 		return
@@ -126,6 +128,8 @@ func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {string} string "Invalid request"
 // @Router /orders [post]
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
+	userIdFloat := r.Context().Value("user_id").(float64)
+	userId := int(userIdFloat)
 	var req struct {
 		Item     string `json:"item"`
 		Quantity int    `json:"quantity"`
@@ -134,10 +138,15 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		ErrorResponse(w, http.StatusBadRequest, "invalid request format")
 		return
 	}
-	order, err := h.service.CreateOrder(req.Item, req.Quantity)
+	order := model.Order{
+		Item:     req.Item,
+		Quantity: req.Quantity,
+		UserID:   userId,
+	}
+	createdOrder, err := h.service.CreateOrder(order)
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	SuccessResp(w, http.StatusCreated, order)
+	SuccessResp(w, http.StatusCreated, createdOrder)
 }
