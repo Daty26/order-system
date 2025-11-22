@@ -19,6 +19,9 @@ func NewNotificationHandler(service *service.NotificationService) *NotificationH
 	return &NotificationHandler{sv: service}
 }
 func (nh *NotificationHandler) InsertNotification(w http.ResponseWriter, r *http.Request) {
+	userIdFloat := r.Context().Value("user_id").(float64)
+	userId := int(userIdFloat)
+
 	var req struct {
 		OrderID   int                      `json:"order_id"`
 		PaymentID int                      `json:"payment_id"`
@@ -30,7 +33,7 @@ func (nh *NotificationHandler) InsertNotification(w http.ResponseWriter, r *http
 		ErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	notification, err := nh.sv.Insert(req.OrderID, req.PaymentID, req.Status, req.Message)
+	notification, err := nh.sv.Insert(req.OrderID, req.PaymentID, req.Status, req.Message, userId)
 	if err != nil {
 		ErrorResponse(w, http.StatusInternalServerError, "Couldn't insert new payment: "+err.Error())
 		return
@@ -38,8 +41,10 @@ func (nh *NotificationHandler) InsertNotification(w http.ResponseWriter, r *http
 	SuccessResp(w, http.StatusCreated, notification)
 }
 
-func (nh *NotificationHandler) GetAllNotifications(w http.ResponseWriter, r *http.Request) {
-	notifications, err := nh.sv.GetAll()
+func (nh *NotificationHandler) GetAllNotificationsByUserId(w http.ResponseWriter, r *http.Request) {
+	userIdFloat := r.Context().Value("user_id").(float64)
+	userId := int(userIdFloat)
+	notifications, err := nh.sv.GetAllByUserID(userId)
 	if err != nil {
 		ErrorResponse(w, http.StatusInternalServerError, "Couldn't retrieve notifications: "+err.Error())
 		return
@@ -66,8 +71,10 @@ func (nh *NotificationHandler) GetNotificationByID(w http.ResponseWriter, r *htt
 	SuccessResp(w, http.StatusOK, notificationByID)
 }
 func (nh *NotificationHandler) GetNotificationsByStatus(w http.ResponseWriter, r *http.Request) {
+	userIdFloat := r.Context().Value("user_id").(float64)
+	userId := int(userIdFloat)
 	status := model.NotificationStatus(chi.URLParam(r, "status"))
-	notifications, err := nh.sv.GetByStatus(status)
+	notifications, err := nh.sv.GetByStatus(status, userId)
 	if err != nil {
 		ErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -75,6 +82,11 @@ func (nh *NotificationHandler) GetNotificationsByStatus(w http.ResponseWriter, r
 	SuccessResp(w, http.StatusOK, notifications)
 }
 func (nh *NotificationHandler) UpdateNotificationStatusByID(w http.ResponseWriter, r *http.Request) {
+	userRole := r.Context().Value("role")
+	if userRole != "ADMIN" {
+		ErrorResponse(w, http.StatusForbidden, "You don't have permission to update notification")
+		return
+	}
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, "incorrect id: "+err.Error())
@@ -96,6 +108,11 @@ func (nh *NotificationHandler) UpdateNotificationStatusByID(w http.ResponseWrite
 	SuccessResp(w, http.StatusOK, notification)
 }
 func (nh *NotificationHandler) DeleteNotificationByID(w http.ResponseWriter, r *http.Request) {
+	userRole := r.Context().Value("role")
+	if userRole != "ADMIN" {
+		ErrorResponse(w, http.StatusForbidden, "You don't have permission to update notification")
+		return
+	}
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, "incorrect id: "+err.Error())

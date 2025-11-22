@@ -10,4 +10,5 @@ type PaymentCreated struct {
 	PaymentID int           `json:"payment_id"`
 	OrderID   int           `json:"order_id"`
 	Status    PaymentStatus `json:"status"`
+	UserID    int           `json:"user_id"`
 }

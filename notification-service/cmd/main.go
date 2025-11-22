@@ -30,7 +30,7 @@ func main() {
 			return
 		}
 		log.Println(paymentCreated)
-		if _, err := serv.Insert(paymentCreated.OrderID, paymentCreated.PaymentID, model.NotificationSent, "payment has been created"); err != nil {
+		if _, err := serv.Insert(paymentCreated.OrderID, paymentCreated.PaymentID, model.NotificationSent, paymentCreated.UserID, "payment has been created"); err != nil {
 			log.Println("Kafka process for notification service failed: ", err)
 			return
 		}
@@ -59,7 +59,7 @@ func main() {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.AuthMiddleware)
 		r.Post("/notifications", handler.InsertNotification)
-		r.Get("/notifications", handler.GetAllNotifications)
+		r.Get("/notifications", handler.GetAllNotificationsByUserId)
 		r.Get("/notifications/{id}", handler.GetNotificationByID)
 		r.Get("/notifications/status/{status}", handler.GetNotificationsByStatus)
 		r.Put("/notifications/{id}/status", handler.UpdateNotificationStatusByID)

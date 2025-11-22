@@ -14,7 +14,7 @@ func NewNotificationService(repo repository.NotificationRepo) *NotificationServi
 	return &NotificationService{repo: repo}
 }
 
-func (ns *NotificationService) Insert(orderId int, paymentId int, status model.NotificationStatus, message string) (model.Notification, error) {
+func (ns *NotificationService) Insert(orderId int, paymentId int, status model.NotificationStatus, userId int, message string) (model.Notification, error) {
 	if status != "PENDING" && status != "SENT" && status != "FAILED" {
 		return model.Notification{}, errors.New("enter right status")
 	}
@@ -27,6 +27,7 @@ func (ns *NotificationService) Insert(orderId int, paymentId int, status model.N
 		PaymentID: paymentId,
 		Status:    status,
 		Message:   message,
+		UserID:    userId,
 	}
 	return ns.repo.Insert(notification)
 }
@@ -36,22 +37,25 @@ func (ns *NotificationService) GetByID(id int) (model.Notification, error) {
 	}
 	return ns.repo.GetByID(id)
 }
-func (ns *NotificationService) GetByStatus(status model.NotificationStatus) ([]model.Notification, error) {
+func (ns *NotificationService) GetByStatus(status model.NotificationStatus, userId int) ([]model.Notification, error) {
 	if status != "PENDING" && status != "SENT" && status != "FAILED" {
 		return []model.Notification{}, errors.New("Enter right status")
 	}
-	return ns.repo.GetByStatus(status)
+	return ns.repo.GetByStatus(status, userId)
 }
 
-func (ns *NotificationService) GetAll() ([]model.Notification, error) {
-	return ns.repo.GetAll()
+func (ns *NotificationService) GetAllByUserID(userId int) ([]model.Notification, error) {
+	if userId < 0 {
+		return []model.Notification{}, errors.New("invalid user id")
+	}
+	return ns.repo.GetAllByUserID(userId)
 }
 func (ns *NotificationService) UpdateStatusByID(id int, status model.NotificationStatus) (model.Notification, error) {
 	if id <= 0 {
 		return model.Notification{}, errors.New("incorrect id")
 	}
 	if status != "PENDING" && status != "SENT" && status != "FAILED" {
-		return model.Notification{}, errors.New("Enter right status")
+		return model.Notification{}, errors.New("enter right status")
 	}
 	return ns.repo.UpdateStatusByID(id, status)
 }

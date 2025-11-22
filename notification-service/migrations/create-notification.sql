@@ -4,6 +4,7 @@ create table IF NOT EXISTS notifications (
   payment_id int not null,
   status varchar(20) not null check (status IN ('PENDING','SENT','FAILED')),
   message TEXT,
+  user_id int not null,
   created_at timestamp default now()
 );
 

@@ -16,5 +16,6 @@ type Notification struct {
 	PaymentID int                `json:"paymentID"`
 	Status    NotificationStatus `json:"status"`
 	Message   string             `json:"message"`
+	UserID    int                `json:"user_id"`
 	CreatedAt time.Time          `json:"created_at"`
 }
