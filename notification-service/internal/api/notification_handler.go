@@ -33,7 +33,7 @@ func (nh *NotificationHandler) InsertNotification(w http.ResponseWriter, r *http
 		ErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	notification, err := nh.sv.Insert(req.OrderID, req.PaymentID, req.Status, req.Message, userId)
+	notification, err := nh.sv.Insert(req.OrderID, req.PaymentID, req.Status, userId, req.Message)
 	if err != nil {
 		ErrorResponse(w, http.StatusInternalServerError, "Couldn't insert new payment: "+err.Error())
 		return

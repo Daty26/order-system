@@ -23,7 +23,7 @@ func NewNotificationRepo(db *sql.DB) *PostgresNotificationRepo {
 }
 
 func (nf *PostgresNotificationRepo) Insert(notification model.Notification) (model.Notification, error) {
-	query := `INSERT INTO notifications (order_id, payment_id, status, messagem, user_id) VALUES ($1, $2, $3, $4) RETURNING id, created_at`
+	query := `INSERT INTO notifications (order_id, payment_id, status, message, user_id) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at`
 	row := nf.db.QueryRow(query, notification.OrderID, notification.PaymentID, notification.Status, notification.Message, notification.UserID)
 
 	err := row.Scan(&notification.ID, &notification.CreatedAt)
