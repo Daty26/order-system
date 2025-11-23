@@ -9,6 +9,7 @@ import (
 
 type OrderCreated struct {
 	OrderID int `json:"order_id"`
+	UserID  int `json:"user_id"`
 	Items   []struct {
 		ProductID int `json:"product_id"`
 		Quantity  int `json:"quantity"`
@@ -41,7 +42,7 @@ func (kc *KafkaConsumer) Consume(topic string) error {
 			log.Println("couldn;t parse the message: " + err.Error())
 			continue
 		}
-		log.Printf("received order_id=%d, with %d item(s)\n", event.OrderID, len(event.Items))
+		log.Printf("received order_id=%d, with %d item(s) for userID: %d\n", event.OrderID, len(event.Items), event.UserID)
 		for _, items := range event.Items {
 			if err = kc.service.ReduceStock(items.ProductID, items.Quantity); err != nil {
 				log.Printf("error reducing stock for product_id=%d: %v", items.ProductID, err.Error())
