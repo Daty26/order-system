@@ -35,6 +35,7 @@ func main() {
 
 	type orderCreated struct {
 		OrderID int `json:"order_id"`
+		UserID  int `json:"user_id"`
 		Items   []struct {
 			PaymentID int `json:"payment_id"`
 			Quantity  int `json:"quantity"`
@@ -47,7 +48,7 @@ func main() {
 			log.Println("kafka handler: bad payload:", err)
 			return
 		}
-		if _, err := srv.ProcessPayment(order.OrderID, len(order.Items)); err != nil {
+		if _, err := srv.ProcessPayment(order.OrderID, len(order.Items), order.UserID); err != nil {
 			log.Println("kafka handler: process payment failed:", err)
 			return
 		}

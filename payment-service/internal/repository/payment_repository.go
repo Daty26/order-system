@@ -21,8 +21,8 @@ func NewPostgresRep(db *sql.DB) *PostgresPaymentRep {
 }
 
 func (r *PostgresPaymentRep) Save(payment model.Payment) (model.Payment, error) {
-	query := `INSERT INTO payments(order_id, status, amount) VALUES ($1, $2, $3) RETURNING id`
-	err := r.db.QueryRow(query, payment.OrderID, payment.Status, payment.Amount).Scan(&payment.ID)
+	query := `INSERT INTO payments(order_id, status, amount, user_id) VALUES ($1, $2, $3, $4) RETURNING id`
+	err := r.db.QueryRow(query, payment.OrderID, payment.Status, payment.Amount, payment.UserID).Scan(&payment.ID)
 	if err != nil {
 		return model.Payment{}, err
 	}
@@ -30,7 +30,7 @@ func (r *PostgresPaymentRep) Save(payment model.Payment) (model.Payment, error) 
 }
 
 func (r *PostgresPaymentRep) GetAll() ([]model.Payment, error) {
-	rows, err := r.db.Query(`SELECT id, order_id, status, amount from payments`)
+	rows, err := r.db.Query(`SELECT id, order_id, status, amount, user_id from payments`)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func (r *PostgresPaymentRep) GetAll() ([]model.Payment, error) {
 	var payments []model.Payment
 	for rows.Next() {
 		var payment model.Payment
-		err := rows.Scan(&payment.ID, &payment.OrderID, &payment.Status, &payment.Amount)
+		err := rows.Scan(&payment.ID, &payment.OrderID, &payment.Status, &payment.Amount, &payment.UserID)
 		if err != nil {
 			return nil, err
 		}
@@ -49,7 +49,7 @@ func (r *PostgresPaymentRep) GetAll() ([]model.Payment, error) {
 
 func (r *PostgresPaymentRep) GetByID(id int) (model.Payment, error) {
 	var payment model.Payment
-	err := r.db.QueryRow("SELECT id, order_id, status, amount from payments where id=$1", id).Scan(&payment.ID, &payment.OrderID, &payment.Status, &payment.Amount)
+	err := r.db.QueryRow("SELECT id, order_id, status, amount, user_id from payments where id=$1", id).Scan(&payment.ID, &payment.OrderID, &payment.Status, &payment.Amount, &payment.UserID)
 	if err != nil {
 		return model.Payment{}, err
 	}
@@ -58,8 +58,8 @@ func (r *PostgresPaymentRep) GetByID(id int) (model.Payment, error) {
 
 func (r *PostgresPaymentRep) Update(id int, status model.PaymentStatus, amount float64) (model.Payment, error) {
 	var payment model.Payment
-	query := `update payments SET status=$1, amount=$2 where id = $3 RETURNING id,order_id, status, amount`
-	if err := r.db.QueryRow(query, status, amount, id).Scan(&payment.ID, &payment.OrderID, &payment.Status, &payment.Amount); err != nil {
+	query := `update payments SET status=$1, amount=$2 where id = $3 RETURNING id,order_id, status, amount, user_id`
+	if err := r.db.QueryRow(query, status, amount, id).Scan(&payment.ID, &payment.OrderID, &payment.Status, &payment.Amount, &payment.UserID); err != nil {
 		return model.Payment{}, err
 	}
 	return payment, nil

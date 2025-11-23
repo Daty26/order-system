@@ -18,7 +18,7 @@ func NewPaymentService(payRep repository.PaymentRep, prod *kafka.KafkaProducer) 
 	return &PaymentService{paymentRep: payRep, producer: prod}
 }
 
-func (s *PaymentService) ProcessPayment(orderID int, amount int) (model.Payment, error) {
+func (s *PaymentService) ProcessPayment(orderID int, amount int, userId int) (model.Payment, error) {
 	if amount <= 0 {
 		return model.Payment{}, errors.New("amount can't be negative")
 	}
@@ -26,6 +26,7 @@ func (s *PaymentService) ProcessPayment(orderID int, amount int) (model.Payment,
 		OrderID: orderID,
 		Status:  model.PaymentCompleted,
 		Amount:  amount,
+		UserID:  userId,
 	}
 	savedPayment, err := s.paymentRep.Save(payment)
 	if err != nil {
