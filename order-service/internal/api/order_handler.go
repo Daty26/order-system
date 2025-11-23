@@ -26,9 +26,20 @@ func NewOrderHandler(s *service.OrderService) *OrderHandler {
 // @Success 200 {array} model.Order
 // @Router /orders [get]
 func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
-	orders, err := h.service.GetOrders()
+	role := r.Context().Value("role").(string)
+	userId := int(r.Context().Value("user_id").(float64))
+	if role == "ADMIN" {
+		orders, err := h.service.GetOrders()
+		if err != nil {
+			ErrorResponse(w, http.StatusInternalServerError, "couldn't fetch orders")
+			return
+		}
+		SuccessResp(w, http.StatusOK, orders)
+		return
+	}
+	orders, err := h.service.GetOrdersByUserId(userId)
 	if err != nil {
-		ErrorResponse(w, http.StatusInternalServerError, "couldn't fetch orders")
+		ErrorResponse(w, http.StatusInternalServerError, "couldn't fetch orders of specified user")
 		return
 	}
 	SuccessResp(w, http.StatusOK, orders)

@@ -25,6 +25,9 @@ func (ih *InventoryHandler) GetAllProducts(w http.ResponseWriter, r *http.Reques
 	SuccessResponse(w, http.StatusOK, products)
 }
 func (ih *InventoryHandler) InsertProduct(w http.ResponseWriter, r *http.Request) {
+	if r.Context().Value("role") != "ADMIN" {
+		ErrorResponse(w, http.StatusForbidden, "you are not allowed to add products")
+	}
 	var req struct {
 		Name     string `json:"name"`
 		Quantity int    `json:"quantity"`
@@ -49,6 +52,10 @@ func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Reques
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, "Couldn't convert string to int: "+err.Error())
+		return
+	}
+	if r.Context().Value("role") != "ADMIN" {
+		ErrorResponse(w, http.StatusForbidden, "you are not allowed to change product quantity")
 		return
 	}
 	var req struct {

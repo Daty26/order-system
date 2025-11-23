@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/Daty26/order-system/auth/middleware"
 	"github.com/Daty26/order-system/inventory-service/internal/api"
 	"github.com/Daty26/order-system/inventory-service/internal/db"
 	"github.com/Daty26/order-system/inventory-service/internal/kafka"
@@ -33,8 +34,11 @@ func main() {
 			return
 		}
 	})
-	r.Post("/products", handler.InsertProduct)
-	r.Put("/products/{id}", handler.UpdateQuantity)
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.AuthMiddleware)
+		r.Post("/products", handler.InsertProduct)
+		r.Put("/products/{id}", handler.UpdateQuantity)
+	})
 	r.Get("/products", handler.GetAllProducts)
 	err := http.ListenAndServe(":8084", r)
 	if err != nil {
