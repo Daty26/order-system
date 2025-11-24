@@ -59,7 +59,7 @@ func main() {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.AuthMiddleware)
 		r.Post("/notifications", handler.InsertNotification)
-		r.Get("/notifications", handler.GetAllNotificationsByUserId)
+		r.Get("/notifications", handler.GetNotifications)
 		r.Get("/notifications/{id}", handler.GetNotificationByID)
 		r.Get("/notifications/status/{status}", handler.GetNotificationsByStatus)
 		r.Put("/notifications/{id}/status", handler.UpdateNotificationStatusByID)

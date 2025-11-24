@@ -41,10 +41,20 @@ func (nh *NotificationHandler) InsertNotification(w http.ResponseWriter, r *http
 	SuccessResp(w, http.StatusCreated, notification)
 }
 
-func (nh *NotificationHandler) GetAllNotificationsByUserId(w http.ResponseWriter, r *http.Request) {
+func (nh *NotificationHandler) GetNotifications(w http.ResponseWriter, r *http.Request) {
+	role := r.Context().Value("role").(string)
 	userIdFloat := r.Context().Value("user_id").(float64)
 	userId := int(userIdFloat)
-	notifications, err := nh.sv.GetAllByUserID(userId)
+	if role == "ADMIN" {
+		notifications, err := nh.sv.GetAllByUserID(userId)
+		if err != nil {
+			ErrorResponse(w, http.StatusInternalServerError, "Couldn't retrieve notifications: "+err.Error())
+			return
+		}
+		SuccessResp(w, http.StatusOK, notifications)
+		return
+	}
+	notifications, err := nh.sv.GetAll()
 	if err != nil {
 		ErrorResponse(w, http.StatusInternalServerError, "Couldn't retrieve notifications: "+err.Error())
 		return

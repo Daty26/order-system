@@ -13,6 +13,7 @@ type NotificationRepo interface {
 	GetByStatus(status model.NotificationStatus, userId int) ([]model.Notification, error)
 	UpdateStatusByID(id int, status model.NotificationStatus) (model.Notification, error)
 	DeleteByID(id int) error
+	GetAll() ([]model.Notification, error)
 }
 type PostgresNotificationRepo struct {
 	db *sql.DB
@@ -52,7 +53,7 @@ func (nf *PostgresNotificationRepo) GetAllByUserID(userId int) ([]model.Notifica
 	}
 	return notifications, nil
 }
-func (nf *PostgresNotificationRepo) GetAl() ([]model.Notification, error) {
+func (nf *PostgresNotificationRepo) GetAll() ([]model.Notification, error) {
 	rows, err := nf.db.Query(`SELECT id, order_id, payment_id, status, message, user_id, created_at FROM notifications ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, err

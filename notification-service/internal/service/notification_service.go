@@ -50,6 +50,9 @@ func (ns *NotificationService) GetAllByUserID(userId int) ([]model.Notification,
 	}
 	return ns.repo.GetAllByUserID(userId)
 }
+func (ns *NotificationService) GetAll() ([]model.Notification, error) {
+	return ns.repo.GetAll()
+}
 func (ns *NotificationService) UpdateStatusByID(id int, status model.NotificationStatus) (model.Notification, error) {
 	if id <= 0 {
 		return model.Notification{}, errors.New("incorrect id")
