@@ -149,7 +149,19 @@ func (s *PaymentHandler) DeletePayment(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {string} string "Couldn't fetch payments"
 // @Router /payments [get]
 func (s *PaymentHandler) GetPayments(w http.ResponseWriter, r *http.Request) {
-	payments, err := s.paymentService.GetAllPayments()
+	role := r.Context().Value("role")
+	userId := int(r.Context().Value("user_id").(float64))
+	if role == "ADMIN" {
+		payments, err := s.paymentService.GetAllPayments()
+		if err != nil {
+			ErrorResponse(w, http.StatusBadRequest, "Couldn't fetch orders: "+err.Error())
+			return
+		}
+		SuccessPayment(w, http.StatusOK, payments)
+		return
+	}
+
+	payments, err := s.paymentService.GetAllByUserId(userId)
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, "Couldn't fetch orders: "+err.Error())
 		return

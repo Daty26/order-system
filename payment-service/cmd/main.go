@@ -78,9 +78,8 @@ func main() {
 		r.Get("/payments/{id}", handler.GetPaymentByID)
 		r.Post("/payments", handler.CreatePayment)
 		r.Delete("/payments/{id}", handler.DeletePayment)
-		// r.GEt payments/{userID}
+		r.Get("/payments", handler.GetPayments)
 	})
-	r.Get("/payments", handler.GetPayments)
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 	log.Println("starting payment service on port 8081")

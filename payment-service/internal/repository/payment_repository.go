@@ -11,6 +11,7 @@ type PaymentRep interface {
 	GetByID(id int) (model.Payment, error)
 	Update(id int, status model.PaymentStatus, amount float64) (model.Payment, error)
 	Delete(id int) error
+	GetAllByUserId(userId int) ([]model.Payment, error)
 }
 type PostgresPaymentRep struct {
 	db *sql.DB
@@ -31,6 +32,23 @@ func (r *PostgresPaymentRep) Save(payment model.Payment) (model.Payment, error) 
 
 func (r *PostgresPaymentRep) GetAll() ([]model.Payment, error) {
 	rows, err := r.db.Query(`SELECT id, order_id, status, amount, user_id from payments`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var payments []model.Payment
+	for rows.Next() {
+		var payment model.Payment
+		err := rows.Scan(&payment.ID, &payment.OrderID, &payment.Status, &payment.Amount, &payment.UserID)
+		if err != nil {
+			return nil, err
+		}
+		payments = append(payments, payment)
+	}
+	return payments, nil
+}
+func (r *PostgresPaymentRep) GetAllByUserId(userId int) ([]model.Payment, error) {
+	rows, err := r.db.Query(`SELECT id, order_id, status, amount, user_id from payments where user_id = $1`, userId)
 	if err != nil {
 		return nil, err
 	}

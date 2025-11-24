@@ -22,6 +22,9 @@ func (s *PaymentService) ProcessPayment(orderID int, amount int, userId int) (mo
 	if amount <= 0 {
 		return model.Payment{}, errors.New("amount can't be negative")
 	}
+	if userId < 0 {
+		return model.Payment{}, errors.New("incorrect userID")
+	}
 	payment := model.Payment{
 		OrderID: orderID,
 		Status:  model.PaymentCompleted,
@@ -47,6 +50,12 @@ func (s *PaymentService) ProcessPayment(orderID int, amount int, userId int) (mo
 
 func (s *PaymentService) GetAllPayments() ([]model.Payment, error) {
 	return s.paymentRep.GetAll()
+}
+func (s *PaymentService) GetAllByUserId(userId int) ([]model.Payment, error) {
+	if userId < 0 {
+		return []model.Payment{}, errors.New("incorrect userid")
+	}
+	return s.paymentRep.GetAllByUserId(userId)
 }
 
 func (s *PaymentService) GetPaymentByID(id int) (model.Payment, error) {
