@@ -46,7 +46,7 @@ func (nh *NotificationHandler) GetNotifications(w http.ResponseWriter, r *http.R
 	userIdFloat := r.Context().Value("user_id").(float64)
 	userId := int(userIdFloat)
 	if role == "ADMIN" {
-		notifications, err := nh.sv.GetAllByUserID(userId)
+		notifications, err := nh.sv.GetAll()
 		if err != nil {
 			ErrorResponse(w, http.StatusInternalServerError, "Couldn't retrieve notifications: "+err.Error())
 			return
@@ -54,12 +54,13 @@ func (nh *NotificationHandler) GetNotifications(w http.ResponseWriter, r *http.R
 		SuccessResp(w, http.StatusOK, notifications)
 		return
 	}
-	notifications, err := nh.sv.GetAll()
+	notifications, err := nh.sv.GetAllByUserID(userId)
 	if err != nil {
 		ErrorResponse(w, http.StatusInternalServerError, "Couldn't retrieve notifications: "+err.Error())
 		return
 	}
 	SuccessResp(w, http.StatusOK, notifications)
+	return
 }
 
 func (nh *NotificationHandler) GetNotificationByID(w http.ResponseWriter, r *http.Request) {
