@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/Daty26/order-system/order-service/internal/model"
 	"github.com/Daty26/order-system/order-service/internal/service"
 	"github.com/go-chi/chi/v5"
@@ -83,8 +84,8 @@ func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	userIdFloat := r.Context().Value("user_id").(float64)
 	userId := int(userIdFloat)
 	var req struct {
-		Item     string `json:"item"`
-		Quantity int    `json:"quantity"`
+		ProductId int `json:"product_id"`
+		Quantity  int `json:"quantity"`
 	}
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
@@ -96,7 +97,7 @@ func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 		ErrorResponse(w, http.StatusBadRequest, "Couldn't convert the req body to specified format")
 		return
 	}
-	order, err := h.service.UpdateOrder(id, req.Item, req.Quantity, userId)
+	order, err := h.service.UpdateOrder(id, req.ProductId, req.Quantity, userId)
 	if err != nil {
 		ErrorResponse(w, http.StatusInternalServerError, "Couldn't update order")
 		return
@@ -142,22 +143,42 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	userIdFloat := r.Context().Value("user_id").(float64)
 	userId := int(userIdFloat)
 	var req struct {
-		Item     string `json:"item"`
-		Quantity int    `json:"quantity"`
+		Items []struct {
+			ProductId int `json:"product_id"`
+			Quantity  int `json:"quantity"`
+		} `json:"items"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid request format")
+		ErrorResponse(w, http.StatusBadRequest, "invalid request format: "+err.Error())
 		return
 	}
-	order := model.Order{
-		Item:     req.Item,
-		Quantity: req.Quantity,
-		UserID:   userId,
-	}
-	createdOrder, err := h.service.CreateOrder(order)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, err.Error())
+	if len(req.Items) == 0 {
+		ErrorResponse(w, http.StatusBadRequest, "can't create empty order")
 		return
 	}
-	SuccessResp(w, http.StatusCreated, createdOrder)
+	fmt.Println(req)
+	var orders []model.Order
+	for _, item := range req.Items {
+		if item.ProductId < 0 {
+			ErrorResponse(w, http.StatusBadRequest, "product_id is required and must be > 0")
+			return
+		}
+		if item.Quantity <= 0 {
+			ErrorResponse(w, http.StatusBadRequest, "quantity can't be less than 0")
+			return
+		}
+		order := model.Order{
+			ProductID: item.ProductId,
+			Quantity:  item.Quantity,
+			UserID:    userId,
+		}
+		createdOrder, err := h.service.CreateOrder(order)
+		if err != nil {
+			ErrorResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		orders = append(orders, createdOrder)
+	}
+
+	SuccessResp(w, http.StatusCreated, orders)
 }

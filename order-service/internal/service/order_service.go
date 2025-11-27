@@ -22,7 +22,7 @@ func NewOrderService(repo repository.OrderRep, producer *kafka.KafkaProducer) *O
 }
 
 func (s *OrderService) CreateOrder(order model.Order) (model.Order, error) {
-	if order.Item == "" || order.Quantity < 0 || order.UserID < 0 {
+	if order.ProductID < 0 || order.Quantity < 0 || order.UserID < 0 {
 		return model.Order{}, errors.New("invalid order data")
 	}
 
@@ -34,7 +34,7 @@ func (s *OrderService) CreateOrder(order model.Order) (model.Order, error) {
 		"order_id": createdOrder.ID,
 		"user_id":  createdOrder.UserID,
 		"items": []map[string]int{{
-			"product_id": 1,
+			"product_id": createdOrder.ProductID,
 			"quantity":   createdOrder.Quantity,
 		},
 		},
@@ -66,11 +66,11 @@ func (s *OrderService) GetOrdersByUserId(userId int) ([]model.Order, error) {
 func (s *OrderService) GetOrderByID(id int) (model.Order, error) {
 	return s.repo.GetByID(id)
 }
-func (s *OrderService) UpdateOrder(id int, item string, quantity int, userId int) (model.Order, error) {
-	if item == "" || quantity <= 0 || userId < 0 {
+func (s *OrderService) UpdateOrder(id int, productId int, quantity int, userId int) (model.Order, error) {
+	if productId <= 0 || quantity <= 0 || userId < 0 {
 		return model.Order{}, errors.New("invalid request value")
 	}
-	order, err := s.repo.Update(id, item, quantity, userId)
+	order, err := s.repo.Update(id, productId, quantity, userId)
 	if err != nil {
 		return model.Order{}, err
 	}
