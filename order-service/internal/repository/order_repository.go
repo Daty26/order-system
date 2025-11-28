@@ -2,16 +2,17 @@ package repository
 
 import (
 	"database/sql"
+	"github.com/Daty26/order-system/order-service/internal/db"
 	"github.com/Daty26/order-system/order-service/internal/model"
 )
 
 type OrderRep interface {
-	Create(order model.Order) (model.Order, error)
-	GetAll() ([]model.Order, error)
-	GetByID(id int) (model.Order, error)
-	Update(id int, productId int, quantity int, userId int) (model.Order, error)
+	Create(order model.Orders) (model.Order, error)
+	GetAll() ([]model.Orders, error)
+	GetByID(id int) (model.Orders, error)
+	Update(id int, productId int, quantity int, userId int) (model.Orders, error)
 	Delete(id int) error
-	GetAllByUserID(userId int) ([]model.Order, error)
+	GetAllByUserID(userId int) ([]model.Orders, error)
 }
 type PostgresOrderRepo struct {
 	db *sql.DB
@@ -20,29 +21,42 @@ type PostgresOrderRepo struct {
 func NewPostgresRepo(db *sql.DB) *PostgresOrderRepo {
 	return &PostgresOrderRepo{db: db}
 }
-func (r *PostgresOrderRepo) Create(order model.Order) (model.Order, error) {
-	query := `insert into orders (product_id, quantity, user_id) values ($1, $2, $3) RETURNING id`
-	err := r.db.QueryRow(query, order.ProductID, order.Quantity, order.UserID).Scan(&order.ID)
+func (r *PostgresOrderRepo) Create(order model.Orders) (model.Orders, error) {
+	tx, err := r.db.Begin()
 	if err != nil {
-		return model.Order{}, err
+		return model.Orders{}, err
+	}
+	defer tx.Rollback()
+	query := `insert into orders ( user_id, status) values ($1, $2) RETURNING id`
+	err = tx.QueryRow(query, order.UserID, order.Status).Scan(&order.ID)
+	if err != nil {
+		return model.Orders{}, err
+	}
+	for i, item := range order.Items {
+		var itemId int
+		err = tx.QueryRow(`INSERT into order_items (order_id, product_id, quantity) VALUES ($1, $2,$3)`, order.ID, item.ProductID, item.Quantity).Scan(&itemId)
+		if err != nil {
+			return model.Orders{}, err
+		}
+		order.Items[i].ID = itemId
+		order.Items[i].OrderId = order.ID
+	}
+	err = tx.Commit()
+	if err != nil {
+		return model.Orders{}, err
 	}
 	return order, nil
 }
-func (r *PostgresOrderRepo) GetAll() ([]model.Order, error) {
-	rows, err := r.db.Query(`select id, product_id, quantity from orders`)
+func (r *PostgresOrderRepo) GetAll() ([]model.Orders, error) {
+	rows, err := r.db.Query(`select id, user_id, status from orders`)
 	if err != nil {
-		return []model.Order{}, err
+		return []model.Orders{}, err
 	}
-	defer func(rows *sql.Rows) {
-		err := rows.Close()
-		if err != nil {
-
-		}
-	}(rows)
-	var orders []model.Order
+	defer rows.Close()
+	var orders []model.Orders
 	for rows.Next() {
-		var o model.Order
-		if err := rows.Scan(&o.ID, &o.ProductID, &o.Quantity); err != nil {
+		var o model.Orders
+		if err = rows.Scan(&o.ID, &o.ProductID, &o.Quantity); err != nil {
 			return orders, err
 		}
 		orders = append(orders, o)

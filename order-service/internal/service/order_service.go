@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/Daty26/order-system/order-service/internal/kafka"
 	"github.com/Daty26/order-system/order-service/internal/model"
 	"github.com/Daty26/order-system/order-service/internal/repository"
@@ -27,6 +28,8 @@ func (s *OrderService) CreateOrder(order model.Order) (model.Order, error) {
 	}
 
 	createdOrder, err := s.repo.Create(order)
+	fmt.Println("created order:")
+	fmt.Println(createdOrder)
 	if err != nil {
 		return model.Order{}, err
 	}
