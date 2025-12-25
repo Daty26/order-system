@@ -48,7 +48,7 @@ func (r *PostgresOrderRepo) Create(order model.Orders) (model.Orders, error) {
 	return order, nil
 }
 func (r *PostgresOrderRepo) GetAll() ([]model.Orders, error) {
-	rows, err := r.db.Query(`select o.id, o.user_id, o.status oi.product_id, oi.order_id, oi.quantity, oi.id from orders o left join order_items oi on o.id = oi.order_id order by o.id desc`)
+	rows, err := r.db.Query(`select o.id, o.user_id, o.status, oi.product_id, oi.order_id, oi.quantity, oi.id from orders o left join order_items oi on o.id = oi.order_id order by o.id desc`)
 	if err != nil {
 		return []model.Orders{}, err
 	}
@@ -93,24 +93,53 @@ func (r *PostgresOrderRepo) GetAll() ([]model.Orders, error) {
 	}
 	return orders, nil
 }
-func (r *PostgresOrderRepo) GetAllByUserID(userId int) ([]model.Order, error) {
-	rows, err := r.db.Query(`select id, product_id, quantity, user_id from orders where user_id = $1`, userId)
+func (r *PostgresOrderRepo) GetAllByUserID(userId int) ([]model.Orders, error) {
+	rows, err := r.db.Query(`select o.id, o.user_id, o.status, oi.product_id, oi.order_id, oi.quantity, oi.id from orders o left join order_items oi on o.id = oi.order_id where o.user_id = $1 order by o.id desc`, userId)
 	if err != nil {
-		return []model.Order{}, err
+		return []model.Orders{}, err
 	}
 	defer rows.Close()
-	var orders []model.Order
+
+	var orders []model.Orders
+	var currentOrder *model.Orders
+
 	for rows.Next() {
-		var order model.Order
-		err = rows.Scan(&order.ID, &order.ProductID, &order.Quantity, &order.UserID)
+		var (
+			orderID   int
+			userID    int
+			status    string
+			itemID    sql.NullInt64
+			productID sql.NullInt64
+			quantity  sql.NullInt64
+		)
+
+		err = rows.Scan(&orderID, &userID, &status, &itemID, &productID, &quantity)
 		if err != nil {
-			return orders, err
+			return nil, err
 		}
-		orders = append(orders, order)
+		if currentOrder == nil || currentOrder.ID != orderID {
+			order := model.Orders{
+				ID:     orderID,
+				UserID: userID,
+				Status: status,
+				Items:  []model.OrderItem{},
+			}
+			orders = append(orders, order)
+			currentOrder = &orders[len(orders)-1]
+		}
+		if itemID.Valid {
+			item := model.OrderItem{
+				ID:        int(itemID.Int64),
+				OrderId:   orderID,
+				ProductID: int(productID.Int64),
+				Quantity:  int(quantity.Int64),
+			}
+			currentOrder.Items = append(currentOrder.Items, item)
+		}
 	}
 	return orders, nil
 }
-func (r *PostgresOrderRepo) GetByID(id int) (model.Order, error) {
+func (r *PostgresOrderRepo) GetByID(id int) (model.Orders, error) {
 	var order model.Order
 	err := r.db.QueryRow(`select id, product_id, quantity, user_id from orders WHERE id = $1`, id).Scan(&order.ID, &order.ProductID, &order.Quantity, &order.UserID)
 	if err != nil {
