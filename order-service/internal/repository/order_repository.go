@@ -7,7 +7,7 @@ import (
 )
 
 type OrderRep interface {
-	Create(order model.Orders) (model.Order, error)
+	Create(order model.Orders) (model.Orders, error)
 	GetAll() ([]model.Orders, error)
 	GetByID(id int) (model.Orders, error)
 	Update(id int, productId int, quantity int, userId int) (model.Orders, error)
@@ -34,7 +34,7 @@ func (r *PostgresOrderRepo) Create(order model.Orders) (model.Orders, error) {
 	}
 	for i, item := range order.Items {
 		var itemId int
-		err = tx.QueryRow(`INSERT into order_items (order_id, product_id, quantity) VALUES ($1, $2,$3)`, order.ID, item.ProductID, item.Quantity).Scan(&itemId)
+		err = tx.QueryRow(`INSERT into order_items (order_id, product_id, quantity) VALUES ($1, $2,$3) RETURNING id`, order.ID, item.ProductID, item.Quantity).Scan(&itemId)
 		if err != nil {
 			return model.Orders{}, err
 		}
@@ -48,18 +48,48 @@ func (r *PostgresOrderRepo) Create(order model.Orders) (model.Orders, error) {
 	return order, nil
 }
 func (r *PostgresOrderRepo) GetAll() ([]model.Orders, error) {
-	rows, err := r.db.Query(`select id, user_id, status from orders`)
+	rows, err := r.db.Query(`select o.id, o.user_id, o.status oi.product_id, oi.order_id, oi.quantity, oi.id from orders o left join order_items oi on o.id = oi.order_id order by o.id desc`)
 	if err != nil {
 		return []model.Orders{}, err
 	}
 	defer rows.Close()
+
 	var orders []model.Orders
+	var currentOrder *model.Orders
+
 	for rows.Next() {
-		var o model.Orders
-		if err = rows.Scan(&o.ID, &o.ProductID, &o.Quantity); err != nil {
-			return orders, err
+		var (
+			orderID   int
+			userID    int
+			status    string
+			itemID    sql.NullInt64
+			productID sql.NullInt64
+			quantity  sql.NullInt64
+		)
+
+		err = rows.Scan(&orderID, &userID, &status, &itemID, &productID, &quantity)
+		if err != nil {
+			return nil, err
 		}
-		orders = append(orders, o)
+		if currentOrder == nil || currentOrder.ID != orderID {
+			order := model.Orders{
+				ID:     orderID,
+				UserID: userID,
+				Status: status,
+				Items:  []model.OrderItem{},
+			}
+			orders = append(orders, order)
+			currentOrder = &orders[len(orders)-1]
+		}
+		if itemID.Valid {
+			item := model.OrderItem{
+				ID:        int(itemID.Int64),
+				OrderId:   orderID,
+				ProductID: int(productID.Int64),
+				Quantity:  int(quantity.Int64),
+			}
+			currentOrder.Items = append(currentOrder.Items, item)
+		}
 	}
 	return orders, nil
 }
