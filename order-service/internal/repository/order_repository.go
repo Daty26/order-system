@@ -2,8 +2,10 @@ package repository
 
 import (
 	"database/sql"
-	"github.com/Daty26/order-system/order-service/internal/db"
+	"fmt"
+	_ "github.com/Daty26/order-system/order-service/internal/db"
 	"github.com/Daty26/order-system/order-service/internal/model"
+	"golang.org/x/tools/go/analysis/passes/deepequalerrors"
 )
 
 type OrderRep interface {
@@ -48,110 +50,95 @@ func (r *PostgresOrderRepo) Create(order model.Orders) (model.Orders, error) {
 	return order, nil
 }
 func (r *PostgresOrderRepo) GetAll() ([]model.Orders, error) {
-	rows, err := r.db.Query(`select o.id, o.user_id, o.status, oi.product_id, oi.order_id, oi.quantity, oi.id from orders o left join order_items oi on o.id = oi.order_id order by o.id desc`)
+	rows, err := r.db.Query(`Select o.id, o.user_id, o.status, o.created_at from orders o order by o.id desc`)
 	if err != nil {
 		return []model.Orders{}, err
 	}
 	defer rows.Close()
-
 	var orders []model.Orders
-	var currentOrder *model.Orders
-
 	for rows.Next() {
-		var (
-			orderID   int
-			userID    int
-			status    string
-			itemID    sql.NullInt64
-			productID sql.NullInt64
-			quantity  sql.NullInt64
-		)
-
-		err = rows.Scan(&orderID, &userID, &status, &itemID, &productID, &quantity)
+		var order model.Orders
+		err = rows.Scan(&order.ID, &order.UserID, &order.Status, &order.CreatedAt)
 		if err != nil {
-			return nil, err
+			return []model.Orders{}, err
 		}
-		if currentOrder == nil || currentOrder.ID != orderID {
-			order := model.Orders{
-				ID:     orderID,
-				UserID: userID,
-				Status: status,
-				Items:  []model.OrderItem{},
+		order.Items = []model.OrderItem{}
+		itemRows, err := r.db.Query(`SELECT oi.id, oi.product_id, oi.quantity from order_items oi`)
+		if err != nil {
+			return []model.Orders{}, err
+		}
+		defer itemRows.Close()
+		for itemRows.Next() {
+			var item model.OrderItem
+			err = itemRows.Scan(&item.ID, &item.ProductID, &item.Quantity)
+			if err != nil {
+				return []model.Orders{}, err
 			}
-			orders = append(orders, order)
-			currentOrder = &orders[len(orders)-1]
+			item.OrderId = order.ID
+			order.Items = append(order.Items, item)
 		}
-		if itemID.Valid {
-			item := model.OrderItem{
-				ID:        int(itemID.Int64),
-				OrderId:   orderID,
-				ProductID: int(productID.Int64),
-				Quantity:  int(quantity.Int64),
-			}
-			currentOrder.Items = append(currentOrder.Items, item)
-		}
+		orders = append(orders, order)
 	}
 	return orders, nil
 }
 func (r *PostgresOrderRepo) GetAllByUserID(userId int) ([]model.Orders, error) {
-	rows, err := r.db.Query(`select o.id, o.user_id, o.status, oi.product_id, oi.order_id, oi.quantity, oi.id from orders o left join order_items oi on o.id = oi.order_id where o.user_id = $1 order by o.id desc`, userId)
+	rows, err := r.db.Query(`Select o.id, o.user_id, o.status, o.created_at from orders o where o.user_id = $1 order by o.id desc`, userId)
 	if err != nil {
 		return []model.Orders{}, err
 	}
 	defer rows.Close()
-
 	var orders []model.Orders
-	var currentOrder *model.Orders
-
 	for rows.Next() {
-		var (
-			orderID   int
-			userID    int
-			status    string
-			itemID    sql.NullInt64
-			productID sql.NullInt64
-			quantity  sql.NullInt64
-		)
-
-		err = rows.Scan(&orderID, &userID, &status, &itemID, &productID, &quantity)
+		var order model.Orders
+		err = rows.Scan(&order.ID, &order.UserID, &order.Status, &order.CreatedAt)
 		if err != nil {
-			return nil, err
+			return []model.Orders{}, err
 		}
-		if currentOrder == nil || currentOrder.ID != orderID {
-			order := model.Orders{
-				ID:     orderID,
-				UserID: userID,
-				Status: status,
-				Items:  []model.OrderItem{},
+		order.Items = []model.OrderItem{}
+		itemRows, err := r.db.Query(`SELECT oi.id, oi.product_id, oi.quantity from order_items oi where order_id = $1`, order.ID)
+		if err != nil {
+			return []model.Orders{}, err
+		}
+		for itemRows.Next() {
+			var item model.OrderItem
+			err = itemRows.Scan(&item.ID, &item.ProductID, &item.Quantity)
+			if err != nil {
+				return []model.Orders{}, err
 			}
-			orders = append(orders, order)
-			currentOrder = &orders[len(orders)-1]
+			item.OrderId = order.ID
+			order.Items = append(order.Items, item)
 		}
-		if itemID.Valid {
-			item := model.OrderItem{
-				ID:        int(itemID.Int64),
-				OrderId:   orderID,
-				ProductID: int(productID.Int64),
-				Quantity:  int(quantity.Int64),
-			}
-			currentOrder.Items = append(currentOrder.Items, item)
-		}
+		itemRows.Close()
+		orders = append(orders, order)
 	}
 	return orders, nil
 }
 func (r *PostgresOrderRepo) GetByID(id int) (model.Orders, error) {
-	var order model.Order
-	err := r.db.QueryRow(`select id, product_id, quantity, user_id from orders WHERE id = $1`, id).Scan(&order.ID, &order.ProductID, &order.Quantity, &order.UserID)
+	var order model.Orders
+	err := r.db.QueryRow(`select o.id, o.user_id, o.status, o.created_at from orders o WHERE o.id = $1`, id).Scan(&order.ID, &order.UserID, &order.Status, &order.CreatedAt)
 	if err != nil {
-		return model.Order{}, err
+		return model.Orders{}, err
 	}
+	rows, err := r.db.Query(`select oi.id  oi.product_id, oi.quantity from order_items oi where oi.order_id = $1`, order.ID)
+	defer rows.Close()
+	order.Items = []model.OrderItem{}
+	for rows.Next() {
+		var item model.OrderItem
+		err = rows.Scan(&item.ID, &item.ProductID, &item.Quantity)
+		if err != nil {
+			return model.Orders{}, err
+		}
+		item.OrderId = order.ID
+		order.Items = append(order.Items, item)
+	}
+	fmt.Println(order)
 	return order, nil
 }
-func (r *PostgresOrderRepo) Update(id int, productId int, quantity int, userId int) (model.Order, error) {
-	var order model.Order
+func (r *PostgresOrderRepo) Update(id int, productId int, quantity int, userId int) (model.Orders, error) {
+	var order model.Orders
 	err := r.db.QueryRow(`update orders set product_id = $1, quantity = $2, user_id=$3 where id = $4 RETURNING id, product_id, quantity, user_id`, productId, quantity, userId, id).Scan(&order.ID, &order.ProductID, &order.Quantity, &order.UserID)
 	if err != nil {
-		return model.Order{}, err
+		return model.Orders{}, err
 	}
 	return order, err
 }
