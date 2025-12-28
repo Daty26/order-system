@@ -22,25 +22,31 @@ func NewOrderService(repo repository.OrderRep, producer *kafka.KafkaProducer) *O
 	}
 }
 
-func (s *OrderService) CreateOrder(order model.Order) (model.Order, error) {
-	if order.ProductID < 0 || order.Quantity < 0 || order.UserID < 0 {
-		return model.Order{}, errors.New("invalid order data")
+func (s *OrderService) CreateOrder(order model.Orders) (model.Orders, error) {
+	for _, item := range order.Items {
+		if item.OrderId < 0 || item.ProductID < 0 || item.Quantity < 0 {
+			return model.Orders{}, errors.New("invalid order data")
+		}
 	}
 
 	createdOrder, err := s.repo.Create(order)
+	if err != nil {
+		return model.Orders{}, err
+	}
 	fmt.Println("created order:")
 	fmt.Println(createdOrder)
-	if err != nil {
-		return model.Order{}, err
+	items := make([]map[string]int, 0)
+	for _, item := range createdOrder.Items {
+		items = append(items, map[string]int{
+			"product_id": item.ProductID,
+			"quantity":   item.Quantity,
+		})
 	}
 	event := map[string]interface{}{
 		"order_id": createdOrder.ID,
 		"user_id":  createdOrder.UserID,
-		"items": []map[string]int{{
-			"product_id": createdOrder.ProductID,
-			"quantity":   createdOrder.Quantity,
-		},
-		},
+		"status":   createdOrder.Status,
+		"items":    items,
 	}
 	createdOrderJson, err := json.Marshal(event)
 	if err != nil {
@@ -51,7 +57,7 @@ func (s *OrderService) CreateOrder(order model.Order) (model.Order, error) {
 	err = s.kafka.Publish("order.created", createdOrderJson)
 	if err != nil {
 		log.Println("failed to publish topic order.created" + err.Error())
-		return model.Order{}, err
+		return model.Orders{}, err
 	}
 	return createdOrder, nil
 
