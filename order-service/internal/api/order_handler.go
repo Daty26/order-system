@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/Daty26/order-system/order-service/internal/model"
 	"github.com/Daty26/order-system/order-service/internal/service"
 	"github.com/go-chi/chi/v5"
@@ -81,28 +80,60 @@ func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {string} string "Couldn't update order"
 // @Router /orders/{id} [put]
 func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
-	userIdFloat := r.Context().Value("user_id").(float64)
-	userId := int(userIdFloat)
+	uid, ok := r.Context().Value("user_id").(float64)
+	if !ok {
+		ErrorResponse(w, http.StatusUnauthorized, "missing user id")
+		return
+	}
+	userId := int(uid)
 	var req struct {
-		ProductId int `json:"product_id"`
-		Quantity  int `json:"quantity"`
+		Items []struct {
+			ProductId int `json:"product_id"`
+			Quantity  int `json:"quantity"`
+		} `json:"items"`
 	}
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, "Invalid ID")
 		return
 	}
-	err = json.NewDecoder(r.Body).Decode(&req)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	err = dec.Decode(&req)
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, "Couldn't convert the req body to specified format")
 		return
 	}
-	order, err := h.service.UpdateOrder(id, req.ProductId, req.Quantity, userId)
+	if len(req.Items) == 0 {
+		ErrorResponse(w, http.StatusBadRequest, "items cannot be empty")
+		return
+	}
+	items := make([]model.OrderItems, 0)
+	for _, item := range req.Items {
+		if item.ProductId <= 0 {
+			ErrorResponse(w, http.StatusBadRequest, "product_id is required and must be > 0")
+			return
+		}
+		if item.Quantity <= 0 {
+			ErrorResponse(w, http.StatusBadRequest, "quantity can't be less than 0")
+			return
+		}
+		items = append(items, model.OrderItems{
+			ProductID: item.ProductId,
+			Quantity:  item.Quantity,
+		})
+	}
+	order := model.Orders{
+		ID:     id,
+		UserID: userId,
+		Items:  items,
+	}
+	updatedOrder, err := h.service.UpdateOrder(order)
 	if err != nil {
 		ErrorResponse(w, http.StatusInternalServerError, "Couldn't update order")
 		return
 	}
-	SuccessResp(w, http.StatusOK, order)
+	SuccessResp(w, http.StatusOK, updatedOrder)
 }
 
 // DeleteOrder godoc
@@ -140,8 +171,13 @@ func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {string} string "Invalid request"
 // @Router /orders [post]
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
-	userIdFloat := r.Context().Value("user_id").(float64)
-	userId := int(userIdFloat)
+	uid, ok := r.Context().Value("user_id").(float64)
+	if !ok {
+		ErrorResponse(w, http.StatusUnauthorized, "missing user id")
+		return
+	}
+	userId := int(uid)
+
 	var req struct {
 		Items []struct {
 			ProductId int `json:"product_id"`
@@ -158,10 +194,9 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		ErrorResponse(w, http.StatusBadRequest, "can't create empty order")
 		return
 	}
-	fmt.Println(req)
-	var orders []model.Order
+	items := make([]model.OrderItems, 0)
 	for _, item := range req.Items {
-		if item.ProductId < 0 {
+		if item.ProductId <= 0 {
 			ErrorResponse(w, http.StatusBadRequest, "product_id is required and must be > 0")
 			return
 		}
@@ -169,18 +204,19 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 			ErrorResponse(w, http.StatusBadRequest, "quantity can't be less than 0")
 			return
 		}
-		order := model.Order{
+		items = append(items, model.OrderItems{
 			ProductID: item.ProductId,
 			Quantity:  item.Quantity,
-			UserID:    userId,
-		}
-		createdOrder, err := h.service.CreateOrder(order)
-		if err != nil {
-			ErrorResponse(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		orders = append(orders, createdOrder)
+		})
 	}
-
-	SuccessResp(w, http.StatusCreated, orders)
+	order := model.Orders{
+		UserID: userId,
+		Items:  items,
+	}
+	createdOrder, err := h.service.CreateOrder(order)
+	if err != nil {
+		ErrorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	SuccessResp(w, http.StatusCreated, createdOrder)
 }
