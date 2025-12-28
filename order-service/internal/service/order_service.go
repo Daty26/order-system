@@ -8,6 +8,7 @@ import (
 	"github.com/Daty26/order-system/order-service/internal/model"
 	"github.com/Daty26/order-system/order-service/internal/repository"
 	"log"
+	"time"
 )
 
 type OrderService struct {
@@ -28,7 +29,8 @@ func (s *OrderService) CreateOrder(order model.Orders) (model.Orders, error) {
 			return model.Orders{}, errors.New("invalid order data")
 		}
 	}
-
+	order.Status = "CREATED"
+	order.CreatedAt = time.Now()
 	createdOrder, err := s.repo.Create(order)
 	if err != nil {
 		return model.Orders{}, err

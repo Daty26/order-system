@@ -5,7 +5,7 @@ import "time"
 type Orders struct {
 	ID        int          `json:"id"`
 	UserID    int          `json:"user_id"`
-	Status    string       `json:"string"`
+	Status    string       `json:"status"`
 	CreatedAt time.Time    `json:"created_at"`
 	Items     []OrderItems `json:"items"`
 }
