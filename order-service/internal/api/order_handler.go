@@ -80,6 +80,10 @@ func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {string} string "Couldn't update order"
 // @Router /orders/{id} [put]
 func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
+	if r.Context().Value("role") != "ADMIN" {
+		ErrorResponse(w, http.StatusForbidden, "you are not allowed to update orders ")
+		return
+	}
 	uid, ok := r.Context().Value("user_id").(float64)
 	if !ok {
 		ErrorResponse(w, http.StatusUnauthorized, "missing user id")
@@ -126,6 +130,7 @@ func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	order := model.Orders{
 		ID:     id,
 		UserID: userId,
+		Status: "UPDATED",
 		Items:  items,
 	}
 	updatedOrder, err := h.service.UpdateOrder(order)
@@ -144,6 +149,10 @@ func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {string} string "Couldn't delete order"
 // @Router /orders/{id} [delete]
 func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
+	if r.Context().Value("role") != "ADMIN" {
+		ErrorResponse(w, http.StatusForbidden, "you are not allowed to delete orders")
+		return
+	}
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, "Invalid id")
