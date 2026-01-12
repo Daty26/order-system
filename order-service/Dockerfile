@@ -1,9 +1,15 @@
 FROM golang:1.25-alpine
 RUN apk add --no-cache git
-WORKDIR /app
-COPY go.mod go.sum ./
+COPY order-service/go.mod order-service/go.sum ./order-service/
+COPY auth/go.mod ./auth/
+
+WORKDIR /app/order-service
 RUN go mod download
+
+WORKDIR /app
 COPY . .
-RUN go build -o order-service ./cmd/main.go
+
+WORKDIR /app/order-service
+RUN go build -o server ./cmd/main.go
 EXPOSE 8080
-CMD ["./order-service"]
+CMD ["./server"]
