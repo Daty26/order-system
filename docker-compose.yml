@@ -1,6 +1,6 @@
 services:
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.7.7
     container_name: kafka
     ports:
       - "9092:9092"
@@ -9,9 +9,9 @@ services:
       CLUSTER_ID: "KM2194jmaTFywaAc-HB0TMg"
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${KAFKA_BROKER}
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
 
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
@@ -25,7 +25,7 @@ services:
       POSTGRES_DB: notifications
     volumes:
       - ./notification-service/migrations:/docker-entrypoint-initdb.d
-      - pgdata_notifications:/varlib/postgresql/data
+      - notifications_data:/var/lib/postgresql/data
     ports:
       - "5434:5432"
 
@@ -34,7 +34,7 @@ services:
     env_file:
       - ./notification-service/.env
     ports:
-      - "8082:8082"
+      - "8082:8080"
     depends_on:
       - kafka
       - postgres-notifications
@@ -47,7 +47,7 @@ services:
       POSTGRES_DB: notifications
     volumes:
       - ./payment-service/migrations:/docker-entrypoint-initdb.d
-      - pgdata_payments:/varlib/postgresql/data
+      - pgdata_payments:/var/lib/postgresql/data
     ports:
       - "5435:5432"
 
