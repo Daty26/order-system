@@ -1,15 +1,25 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+)
 
 var (
-	host     = "localhost"
-	port     = 5432
-	user     = "postgres"
-	password = "1234"
-	dbName   = "users"
+	host     = getEnv("DB_HOST", "localhost")
+	port     = getEnv("DB_PORT", "5432")
+	user     = getEnv("DB_USER", "postgres")
+	password = getEnv("DB_PASSWORD", "postgres")
+	dbName   = getEnv("DB_NAME", "users")
 )
 
 func GetConnString() string {
 	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbName)
+}
+
+func getEnv(value string, defaultVal string) string {
+	if val := os.Getenv(value); val != "" {
+		return val
+	}
+	return defaultVal
 }

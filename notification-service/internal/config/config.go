@@ -1,16 +1,25 @@
 package config
 
-import "fmt"
-
-// chnagew to env var
-const (
-	Host     = "localhost"
-	Port     = 5432
-	User     = "postgres"
-	Password = "1234"
-	DBName   = "notification"
+import (
+	"fmt"
+	"os"
 )
 
-func GetConnString() string {
-	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", Host, Port, User, Password, DBName)
+var (
+	host     = getEnv("DB_HOST", "localhost")
+	port     = getEnv("DB_PORT", "5432")
+	user     = getEnv("DB_USER", "postgres")
+	password = getEnv("DB_PASSWORD", "postgres")
+	dbName   = getEnv("DB_NAME", "notification")
+)
+
+func GetDBConnectionString() string {
+	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbName)
+}
+
+func getEnv(value string, defaultVal string) string {
+	if val := os.Getenv(value); val != "" {
+		return val
+	}
+	return defaultVal
 }
