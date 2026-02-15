@@ -25,7 +25,7 @@ services:
       POSTGRES_DB: notifications
     volumes:
       - ./notification-service/migrations:/docker-entrypoint-initdb.d
-      - notifications_data:/var/lib/postgresql/data
+      - pgdata_notifications:/var/lib/postgresql/data
     ports:
       - "5434:5432"
 
@@ -69,7 +69,7 @@ services:
       POSTGRES_DB: orders
     volumes:
       - ./order-service/migrations:/docker-entrypoint-initdb.d
-      - pgdata_orders:/varlib/postgresql/data
+      - pgdata_orders:/var/lib/postgresql/data
     ports:
       - "5433:5432"
 
@@ -83,8 +83,55 @@ services:
       - kafka
       - postgres-order
 
+  postgres-inventory:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: inventory
+    volumes:
+      - ./inventory-service/migrations:/docker-entrypoint-initdb.d
+      - pgdata_inventory:/var/lib/postgresql/data
+    ports:
+      - "5431:5432"
+
+  inventory-service:
+    build: ./inventory-service
+    env_file:
+      - ./inventory-service/.env
+    ports:
+      - "8084:8080"
+    depends_on:
+      - kafka
+      - postgres-inventory
+
+  postgres-user:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: users
+    volumes:
+      - ./user-service/migrations:/docker-entrypoint-initdb.d
+      - pgdata_users:/var/lib/postgresql/data
+    ports:
+      - "5430:5432"
+
+  user-service:
+    build: ./user-service
+    env_file:
+      - ./user-service/.env
+    ports:
+      - "8085:8080"
+    depends_on:
+      - kafka
+      - postgres-user
+
+
 
 volumes:
   pgdata_notifications:
   pgdata_payments:
   pgdata_orders:
+  pgdata_users:
+  pgdata_inventory:
