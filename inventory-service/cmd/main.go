@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/Daty26/order-system/auth/middleware"
 	"github.com/Daty26/order-system/inventory-service/internal/api"
 	"github.com/Daty26/order-system/inventory-service/internal/db"
 	"github.com/Daty26/order-system/inventory-service/internal/kafka"
+	"github.com/Daty26/order-system/inventory-service/internal/middleware"
 	"github.com/Daty26/order-system/inventory-service/internal/repository"
 	"github.com/Daty26/order-system/inventory-service/internal/service"
 	"github.com/go-chi/chi/v5"

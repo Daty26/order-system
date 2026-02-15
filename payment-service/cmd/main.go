@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/Daty26/order-system/auth/middleware"
+	"github.com/Daty26/order-system/payment-service/internal/middleware"
 	"log"
 	"net/http"
 

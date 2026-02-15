@@ -3,7 +3,7 @@ package middleware
 import (
 	"context"
 	"errors"
-	"github.com/Daty26/order-system/auth/response"
+	"github.com/Daty26/order-system/inventory-service/internal/api"
 	"github.com/golang-jwt/jwt/v5"
 	"net/http"
 	"os"
@@ -16,18 +16,18 @@ func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			response.ErrorResponse(w, http.StatusUnauthorized, "invalid token")
+			api.ErrorResponse(w, http.StatusUnauthorized, "invalid token")
 			return
 		}
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 {
-			response.ErrorResponse(w, http.StatusUnauthorized, "couldn't find the token")
+			api.ErrorResponse(w, http.StatusUnauthorized, "couldn't find the token")
 			return
 		}
 		tokenString := parts[1]
 		claims, err := verifyToken(tokenString)
 		if err != nil {
-			response.ErrorResponse(w, http.StatusUnauthorized, err.Error())
+			api.ErrorResponse(w, http.StatusUnauthorized, err.Error())
 			return
 		}
 		ctx := context.WithValue(r.Context(), "user_id", claims["user_id"])

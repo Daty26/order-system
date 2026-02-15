@@ -1,11 +1,11 @@
 package main
 
 import (
-	"github.com/Daty26/order-system/auth/middleware"
 	_ "github.com/Daty26/order-system/order-service/docs"
 	"github.com/Daty26/order-system/order-service/internal/api"
 	"github.com/Daty26/order-system/order-service/internal/db"
 	"github.com/Daty26/order-system/order-service/internal/kafka"
+	"github.com/Daty26/order-system/order-service/internal/middleware"
 	"github.com/Daty26/order-system/order-service/internal/repository"
 	"github.com/Daty26/order-system/order-service/internal/service"
 	"github.com/go-chi/chi/v5"

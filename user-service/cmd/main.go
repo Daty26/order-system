@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/Daty26/order-system/auth/middleware"
 	"github.com/Daty26/order-system/user-service/internal/api"
 	"github.com/Daty26/order-system/user-service/internal/db"
+	"github.com/Daty26/order-system/user-service/internal/middleware"
 	"github.com/Daty26/order-system/user-service/internal/repository"
 	"github.com/Daty26/order-system/user-service/internal/service"
 	"github.com/go-chi/chi/v5"
