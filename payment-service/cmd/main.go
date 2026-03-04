@@ -2,9 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/Daty26/order-system/payment-service/internal/middleware"
 	"log"
 	"net/http"
+	"os"
+	"strings"
+
+	"github.com/Daty26/order-system/payment-service/internal/middleware"
 
 	"github.com/Daty26/order-system/payment-service/internal/kafka"
 
@@ -24,7 +27,8 @@ func main() {
 	db.InitDB()
 	defer db.DataDB.Close()
 
-	producer, err := kafka.NewKafkaProducer([]string{"localhost:9092"})
+	kafkaBrokers := strings.Split(getEnv("KAFKA_BROKERS", "localhost:9092"), ",")
+	producer, err := kafka.NewKafkaProducer(kafkaBrokers)
 	if err != nil {
 		log.Fatalf("couldn't create producer: %v", err)
 	}
@@ -34,11 +38,13 @@ func main() {
 	srv := service.NewPaymentService(repo, producer)
 
 	type orderCreated struct {
-		OrderID int `json:"order_id"`
-		UserID  int `json:"user_id"`
-		Items   []struct {
-			PaymentID int `json:"payment_id"`
-			Quantity  int `json:"quantity"`
+		OrderID     int     `json:"order_id"`
+		UserID      int     `json:"user_id"`
+		TotalAmount float64 `json:"total_amaount"`
+		Items       []struct {
+			PaymentID int     `json:"payment_id"`
+			Quantity  int     `json:"quantity"`
+			Price     float64 `json:"price"`
 		} `json:"items"`
 	}
 
@@ -48,13 +54,13 @@ func main() {
 			log.Println("kafka handler: bad payload:", err)
 			return
 		}
-		if _, err := srv.ProcessPayment(order.OrderID, len(order.Items), order.UserID); err != nil {
+		if _, err := srv.ProcessPayment(order.OrderID, order.TotalAmount, order.UserID); err != nil {
 			log.Println("kafka handler: process payment failed:", err)
 			return
 		}
 		log.Printf("Processed payment for order %d\n", order.OrderID)
 	}
-	consumer, err := kafka.NewKafkaConsumer([]string{"localhost:9092"}, consumeOrderCreated)
+	consumer, err := kafka.NewKafkaConsumer(kafkaBrokers, consumeOrderCreated)
 	if err != nil {
 		log.Fatalf("failed to create Kafka consumer: %v", err)
 	}
@@ -87,4 +93,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to start server: %v", err)
 	}
+}
+
+func getEnv(key, defaultVal string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return defaultVal
 }

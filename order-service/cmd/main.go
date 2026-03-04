@@ -1,6 +1,11 @@
 package main
 
 import (
+	"log"
+	"net/http"
+	"os"
+	"strings"
+
 	_ "github.com/Daty26/order-system/order-service/docs"
 	"github.com/Daty26/order-system/order-service/internal/api"
 	"github.com/Daty26/order-system/order-service/internal/db"
@@ -10,8 +15,6 @@ import (
 	"github.com/Daty26/order-system/order-service/internal/service"
 	"github.com/go-chi/chi/v5"
 	httpSwagger "github.com/swaggo/http-swagger"
-	"log"
-	"net/http"
 
 	_ "github.com/lib/pq"
 )
@@ -24,8 +27,8 @@ import (
 func main() {
 	db.InitDB()
 	defer db.DataB.Close()
-
-	prod, err := kafka.NewKafkaProducer([]string{"localhost:9092"})
+	kafkaBrokers := strings.Split(getEnv("KAFKA_BROKERS", "localhost:9092"), ",")
+	prod, err := kafka.NewKafkaProducer(kafkaBrokers)
 	if err != nil {
 		log.Fatalln("failed to create Kafka producer: " + err.Error())
 	}
@@ -61,4 +64,11 @@ func main() {
 		log.Fatalln("couldn't start the server: " + err.Error())
 		return
 	}
+}
+
+func getEnv(key, defaultVal string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return defaultVal
 }

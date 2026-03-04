@@ -37,8 +37,8 @@ func NewRepoPyament(paymentService *service.PaymentService) *PaymentHandler {
 func (s *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 	userId := int(r.Context().Value("user_id").(float64))
 	var req struct {
-		OrderID int `json:"orderId"`
-		Amount  int `json:"amount"`
+		OrderID int     `json:"orderId"`
+		Amount  float64 `json:"amount"`
 	}
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {

@@ -1,6 +1,11 @@
 package main
 
 import (
+	"log"
+	"net/http"
+	"os"
+	"strings"
+
 	"github.com/Daty26/order-system/inventory-service/internal/api"
 	"github.com/Daty26/order-system/inventory-service/internal/db"
 	"github.com/Daty26/order-system/inventory-service/internal/kafka"
@@ -8,8 +13,6 @@ import (
 	"github.com/Daty26/order-system/inventory-service/internal/repository"
 	"github.com/Daty26/order-system/inventory-service/internal/service"
 	"github.com/go-chi/chi/v5"
-	"log"
-	"net/http"
 )
 
 func main() {
@@ -19,8 +22,9 @@ func main() {
 	svc := service.NewInventoryService(repo)
 	handler := api.NewInventoryHandler(svc)
 	r := chi.NewRouter()
+	kafkaBrokers := strings.Split(getEnv("KAFKA_BROKERS", "localhost:9092"), ",")
 	go func() {
-		consumer, err := kafka.NewKafkaConsumer([]string{"localhost:9092"}, svc)
+		consumer, err := kafka.NewKafkaConsumer(kafkaBrokers, svc)
 		if err != nil {
 			log.Fatalf("couldn't start consumer: %s" + err.Error())
 		}
@@ -45,4 +49,11 @@ func main() {
 		log.Fatalf(err.Error())
 		return
 	}
+}
+
+func getEnv(key, defaultVal string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return defaultVal
 }

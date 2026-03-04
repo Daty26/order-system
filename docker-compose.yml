@@ -9,13 +9,19 @@ services:
       CLUSTER_ID: "KM2194jmaTFywaAc-HB0TMg"
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
 
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   postgres-notifications:
     image: postgres:17-alpine
@@ -28,28 +34,40 @@ services:
       - pgdata_notifications:/var/lib/postgresql/data
     ports:
       - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   notification-service:
     build: ./notification-service
     env_file:
       - ./notification-service/.env
     ports:
-      - "8082:8080"
+      - "8082:8083"
     depends_on:
-      - kafka
-      - postgres-notifications
+      kafka:
+        condition: service_healthy
+      postgres-notifications:
+        condition: service_healthy
 
   postgres-payment:
     image: postgres:17-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: payment
+      POSTGRES_DB: payments
     volumes:
       - ./payment-service/migrations:/docker-entrypoint-initdb.d
       - pgdata_payments:/var/lib/postgresql/data
     ports:
       - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   payment-service:
     build: ./payment-service
@@ -58,8 +76,10 @@ services:
     ports:
       - "8081:8081"
     depends_on:
-      - kafka
-      - postgres-payment
+      kafka:
+        condition: service_healthy
+      postgres-payment:
+        condition: service_healthy
 
   postgres-order:
     image: postgres:17-alpine
@@ -72,6 +92,11 @@ services:
       - pgdata_orders:/var/lib/postgresql/data
     ports:
       - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   order-service:
     build: ./order-service
@@ -80,8 +105,10 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - kafka
-      - postgres-order
+      kafka:
+        condition: service_healthy
+      postgres-order:
+        condition: service_healthy
 
   postgres-inventory:
     image: postgres:17-alpine
@@ -94,16 +121,23 @@ services:
       - pgdata_inventory:/var/lib/postgresql/data
     ports:
       - "5431:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   inventory-service:
     build: ./inventory-service
     env_file:
       - ./inventory-service/.env
     ports:
-      - "8084:8080"
+      - "8084:8084"
     depends_on:
-      - kafka
-      - postgres-inventory
+      kafka:
+        condition: service_healthy
+      postgres-inventory:
+        condition: service_healthy
 
   postgres-user:
     image: postgres:17-alpine
@@ -116,16 +150,21 @@ services:
       - pgdata_users:/var/lib/postgresql/data
     ports:
       - "5430:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   user-service:
     build: ./user-service
     env_file:
       - ./user-service/.env
     ports:
-      - "8085:8080"
+      - "8085:8085"
     depends_on:
-      - kafka
-      - postgres-user
+      postgres-user:
+        condition: service_healthy
 
 
 

@@ -2,9 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/Daty26/order-system/notification-service/internal/middleware"
 	"log"
 	"net/http"
+	"os"
+	"strings"
+
+	"github.com/Daty26/order-system/notification-service/internal/middleware"
 
 	"github.com/Daty26/order-system/notification-service/internal/api"
 	"github.com/Daty26/order-system/notification-service/internal/db"
@@ -36,7 +39,8 @@ func main() {
 		}
 		log.Printf("Notification is created for orderid=%v, paymentid=%v", paymentCreated.OrderID, paymentCreated.PaymentID)
 	}
-	consumer, err := kafka.NewKafkaConsumer([]string{"localhost:9092"}, consumePaymentCreated)
+	kafkaBrokers := strings.Split(getEnv("KAFKA_BROKERS", "localhost:9092"), ",")
+	consumer, err := kafka.NewKafkaConsumer(kafkaBrokers, consumePaymentCreated)
 	if err != nil {
 		log.Printf("Failed to create new kafka consumer: %v", err.Error())
 		return
@@ -69,4 +73,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+}
+
+func getEnv(key, defaultVal string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return defaultVal
 }
