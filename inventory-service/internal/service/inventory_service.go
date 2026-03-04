@@ -21,8 +21,11 @@ func (is *InventoryService) Insert(product model.Product) (model.Product, error)
 	if product.Quantity < 0 {
 		return model.Product{}, errors.New("quantity can't be less than 0")
 	}
+	if product.Price < 0 {
+		return model.Product{}, errors.New("price can't be less than 0")
+	}
 	if len(product.Name) == 0 {
-		return model.Product{}, errors.New("Name can't be empty")
+		return model.Product{}, errors.New("name can't be empty")
 	}
 	return is.repo.Insert(product)
 }

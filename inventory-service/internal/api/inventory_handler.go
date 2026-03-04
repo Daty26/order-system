@@ -27,10 +27,12 @@ func (ih *InventoryHandler) GetAllProducts(w http.ResponseWriter, r *http.Reques
 func (ih *InventoryHandler) InsertProduct(w http.ResponseWriter, r *http.Request) {
 	if r.Context().Value("role") != "ADMIN" {
 		ErrorResponse(w, http.StatusForbidden, "you are not allowed to add products")
+		return
 	}
 	var req struct {
-		Name     string `json:"name"`
-		Quantity int    `json:"quantity"`
+		Name     string  `json:"name"`
+		Quantity int     `json:"quantity"`
+		Price    float64 `json:"price"`
 	}
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -39,14 +41,15 @@ func (ih *InventoryHandler) InsertProduct(w http.ResponseWriter, r *http.Request
 	}
 	product := model.Product{
 		Name:     req.Name,
+		Price:    req.Price,
 		Quantity: req.Quantity,
 	}
-	productCrteated, err := ih.serv.Insert(product)
+	productCreated, err := ih.serv.Insert(product)
 	if err != nil {
 		ErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	SuccessResponse(w, http.StatusCreated, productCrteated)
+	SuccessResponse(w, http.StatusCreated, productCreated)
 }
 func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))

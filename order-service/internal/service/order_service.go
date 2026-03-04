@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"time"
+
 	"github.com/Daty26/order-system/order-service/internal/kafka"
 	"github.com/Daty26/order-system/order-service/internal/model"
 	"github.com/Daty26/order-system/order-service/internal/repository"
-	"log"
-	"time"
 )
 
 type OrderService struct {
@@ -37,18 +38,22 @@ func (s *OrderService) CreateOrder(order model.Orders) (model.Orders, error) {
 	}
 	fmt.Println("created order:")
 	fmt.Println(createdOrder)
-	items := make([]map[string]int, 0)
+	items := make([]map[string]interface{}, 0)
+	totalAmount := 0.0
 	for _, item := range createdOrder.Items {
-		items = append(items, map[string]int{
+		totalAmount += item.Price
+		items = append(items, map[string]interface{}{
 			"product_id": item.ProductID,
 			"quantity":   item.Quantity,
+			"price":      item.Price,
 		})
 	}
 	event := map[string]interface{}{
-		"order_id": createdOrder.ID,
-		"user_id":  createdOrder.UserID,
-		"status":   createdOrder.Status,
-		"items":    items,
+		"order_id":     createdOrder.ID,
+		"user_id":      createdOrder.UserID,
+		"status":       createdOrder.Status,
+		"total_amount": totalAmount,
+		"items":        items,
 	}
 	createdOrderJson, err := json.Marshal(event)
 	if err != nil {
