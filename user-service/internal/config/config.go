@@ -3,11 +3,12 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 )
 
 var (
 	host     = getEnv("DB_HOST", "localhost")
-	port     = getEnv("DB_PORT", "5432")
+	port, _  = strconv.Atoi(getEnv("DB_PORT", "5432"))
 	user     = getEnv("DB_USER", "postgres")
 	password = getEnv("DB_PASSWORD", "postgres")
 	dbName   = getEnv("DB_NAME", "users")

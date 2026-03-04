@@ -9,9 +9,6 @@
 
 tasks.txt
 
-payment-service/migrations/
-order-service/migrations/
-
 # Go build
 bin/
 *.log

@@ -16,7 +16,7 @@ func SuccessResponse(w http.ResponseWriter, status int, data interface{}) {
 	w.WriteHeader(status)
 	err := json.NewEncoder(w).Encode(&Resposne{Data: data})
 	if err != nil {
-		log.Fatalln("Couldn't encode request body: " + err.Error())
+		log.Println("Couldn't encode request body: " + err.Error())
 		return
 	}
 }
@@ -25,7 +25,7 @@ func ErrorResponse(w http.ResponseWriter, status int, error string) {
 	w.WriteHeader(status)
 	err := json.NewEncoder(w).Encode(&Resposne{Error: error})
 	if err != nil {
-		log.Fatalln("Couldn't encode request body: " + err.Error())
+		log.Println("Couldn't encode request body: " + err.Error())
 		return
 	}
 }

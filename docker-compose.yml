@@ -44,7 +44,7 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: notifications
+      POSTGRES_DB: payment
     volumes:
       - ./payment-service/migrations:/docker-entrypoint-initdb.d
       - pgdata_payments:/var/lib/postgresql/data

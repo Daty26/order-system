@@ -23,6 +23,7 @@ type KafkaConsumer struct {
 
 func NewKafkaConsumer(broker []string, inventoryService *service.InventoryService) (*KafkaConsumer, error) {
 	consumer, err := sarama.NewConsumer(broker, nil)
+	defer consumer.Close()
 	if err != nil {
 		return nil, err
 	}
