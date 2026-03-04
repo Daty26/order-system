@@ -1,15 +1,12 @@
-FROM golang:1.25-alpine
-RUN apk add --no-cache git
-COPY notification-service/go.mod notification-service/go.sum ./notification-service/
-COPY auth/go.mod ./auth/
-
-WORKDIR /app/notification-service
-RUN go mod download
-
+FROM golang:1.25-alpine as builder
 WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
 COPY . .
-
-WORKDIR /app/notification-service
 RUN go build -o server ./cmd/main.go
+
+FROM alpine:3.23.3
+WORKDIR /app
+COPY --from=builder /app/app .
 EXPOSE 8080
 CMD ["./server"]

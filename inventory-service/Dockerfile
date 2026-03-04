@@ -1,15 +1,14 @@
-FROM golang:1.25-alpine
-RUN apk add --no-cache git
-COPY inventory-service/go.mod inventory-service/go.sum ./inventory-service/
-COPY auth/go.mod ./auth/
-
-WORKDIR /app/inventory-service
-RUN go mod download
-
+FROM golang:1.25-alpine as builder
 WORKDIR /app
-COPY . .
+RUN apk add --no-cache git
 
-WORKDIR /app/inventory-service
-RUN go build -o server ./cmd/main.go
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN go build -o app ./cmd/main.go
+
+FROM alpine:3.23.3
+WORKDIR /app
+COPY --from=builder /app/app .
 EXPOSE 8080
-CMD ["./server"]
+CMD ["./app"]
