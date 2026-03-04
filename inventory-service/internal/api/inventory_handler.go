@@ -76,3 +76,28 @@ func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Reques
 	}
 	SuccessResponse(w, http.StatusOK, quantity)
 }
+func (ih *InventoryHandler) UpdatePrice(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		ErrorResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if r.Context().Value("role") != "ADMIN" {
+		ErrorResponse(w, http.StatusForbidden, "you are not allowed to change product price")
+		return
+	}
+	var req struct {
+		Price float64 `json:"price"`
+	}
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		ErrorResponse(w, http.StatusBadRequest, "Couldn't decode price "+err.Error())
+		return
+	}
+	price, err := ih.serv.UpdatePrice(id, req.Price)
+	if err != nil {
+		ErrorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	SuccessResponse(w, http.StatusOK, price)
+}

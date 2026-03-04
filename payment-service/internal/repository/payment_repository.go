@@ -82,6 +82,7 @@ func (r *PostgresPaymentRep) Update(id int, status model.PaymentStatus, amount f
 	}
 	return payment, nil
 }
+
 func (r *PostgresPaymentRep) Delete(id int) error {
 	query := `Delete from payments where id = $1`
 	res, err := r.db.Exec(query, id)

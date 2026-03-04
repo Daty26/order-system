@@ -10,6 +10,7 @@ type InventoryRepository interface {
 	Insert(product model.Product) (model.Product, error)
 	UpdateQuantity(id int, quanity int) (model.Product, error)
 	GetByID(id int) (model.Product, error)
+	UpdatePrice(id int, price float64) (model.Product, error)
 }
 
 type PostgresInventoryRepo struct {
@@ -60,10 +61,17 @@ func (pr *PostgresInventoryRepo) Insert(product model.Product) (model.Product, e
 }
 func (pr *PostgresInventoryRepo) UpdateQuantity(id int, quantity int) (model.Product, error) {
 	var updatedProduct model.Product
-	query := `update inventory set quantity=$1 where id = $2 RETURNING id, name, quantity, created_at, updated_at`
-	if err := pr.db.QueryRow(query, quantity, id).Scan(&updatedProduct.ID, &updatedProduct.Name, &updatedProduct.Quantity, &updatedProduct.CreatedAt, &updatedProduct.UpdatedAt); err != nil {
+	query := `update inventory set quantity=$1 where id = $2 RETURNING id, name, quantity,price, created_at, updated_at`
+	if err := pr.db.QueryRow(query, quantity, id).Scan(&updatedProduct.ID, &updatedProduct.Name, &updatedProduct.Quantity, &updatedProduct.Price, &updatedProduct.CreatedAt, &updatedProduct.UpdatedAt); err != nil {
 		return updatedProduct, err
 	}
 	return updatedProduct, nil
-
+}
+func (pr *PostgresInventoryRepo) UpdatePrice(id int, newPrice float64) (model.Product, error) {
+	var updatedProduct model.Product
+	query := `update inventory set price=$1 where id = $2 RETURNING id, name, quantity, price, created_at, updated_at`
+	if err := pr.db.QueryRow(query, newPrice, id).Scan(&updatedProduct.ID, &updatedProduct.Name, &updatedProduct.Quantity, &updatedProduct.Price, &updatedProduct.CreatedAt, &updatedProduct.UpdatedAt); err != nil {
+		return model.Product{}, err
+	}
+	return updatedProduct, nil
 }

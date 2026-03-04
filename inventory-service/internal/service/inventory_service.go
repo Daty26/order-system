@@ -39,6 +39,15 @@ func (is *InventoryService) UpdateQuantity(id int, quantity int) (model.Product,
 	return is.repo.UpdateQuantity(id, quantity)
 
 }
+func (is *InventoryService) UpdatePrice(id int, price float64) (model.Product, error) {
+	if id < 0 {
+		return model.Product{}, errors.New("incorrect id")
+	}
+	if price < 0.0 {
+		return model.Product{}, errors.New("incorrect price")
+	}
+	return is.repo.UpdatePrice(id, price)
+}
 func (is *InventoryService) ReduceStock(productId int, quantity int) error {
 	product, err := is.repo.GetByID(productId)
 	if err != nil {
