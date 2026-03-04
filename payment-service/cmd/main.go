@@ -40,7 +40,7 @@ func main() {
 	type orderCreated struct {
 		OrderID     int     `json:"order_id"`
 		UserID      int     `json:"user_id"`
-		TotalAmount float64 `json:"total_amaount"`
+		TotalAmount float64 `json:"total_amount"`
 		Items       []struct {
 			PaymentID int     `json:"payment_id"`
 			Quantity  int     `json:"quantity"`

@@ -41,11 +41,16 @@ func (s *OrderService) CreateOrder(order model.Orders) (model.Orders, error) {
 	items := make([]map[string]interface{}, 0)
 	totalAmount := 0.0
 	for _, item := range createdOrder.Items {
-		totalAmount += item.Price
+		//def price 0
+		itemPrice := item.Price
+		if itemPrice <= 0 {
+			itemPrice = 10.0
+		}
+		totalAmount += float64(item.Quantity) * itemPrice
 		items = append(items, map[string]interface{}{
 			"product_id": item.ProductID,
 			"quantity":   item.Quantity,
-			"price":      item.Price,
+			"price":      itemPrice,
 		})
 	}
 	event := map[string]interface{}{
