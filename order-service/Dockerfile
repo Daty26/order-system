@@ -9,6 +9,6 @@ RUN go build -o server ./cmd/main.go
 
 FROM alpine:3.23.3
 WORKDIR /app
-COPY --from=builder /app/app .
+COPY --from=builder /app/server .
 EXPOSE 8080
 CMD ["./server"]
