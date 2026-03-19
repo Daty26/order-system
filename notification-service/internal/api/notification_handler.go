@@ -7,6 +7,7 @@ import (
 	"github.com/Daty26/order-system/notification-service/internal/model"
 	"github.com/Daty26/order-system/notification-service/internal/service"
 	"github.com/go-chi/chi/v5"
+	"log"
 	"net/http"
 	"strconv"
 )
@@ -30,12 +31,13 @@ func (nh *NotificationHandler) InsertNotification(w http.ResponseWriter, r *http
 	}
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, err.Error())
+		ErrorResponse(w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		return
 	}
 	notification, err := nh.sv.Insert(req.OrderID, req.PaymentID, req.Status, userId, req.Message)
 	if err != nil {
-		ErrorResponse(w, http.StatusInternalServerError, "Couldn't insert notification: "+err.Error())
+		log.Println("Couldn't insert notification: " + err.Error())
+		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 	SuccessResp(w, http.StatusCreated, notification)
@@ -48,7 +50,8 @@ func (nh *NotificationHandler) GetNotifications(w http.ResponseWriter, r *http.R
 	if role == "ADMIN" {
 		notifications, err := nh.sv.GetAll()
 		if err != nil {
-			ErrorResponse(w, http.StatusInternalServerError, "Couldn't retrieve notifications: "+err.Error())
+			log.Println("Couldn't retrieve notifications: " + err.Error())
+			ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 			return
 		}
 		SuccessResp(w, http.StatusOK, notifications)
@@ -56,7 +59,8 @@ func (nh *NotificationHandler) GetNotifications(w http.ResponseWriter, r *http.R
 	}
 	notifications, err := nh.sv.GetAllByUserID(userId)
 	if err != nil {
-		ErrorResponse(w, http.StatusInternalServerError, "Couldn't retrieve notifications: "+err.Error())
+		log.Println("Couldn't retrieve notifications: " + err.Error())
+		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 	SuccessResp(w, http.StatusOK, notifications)
@@ -66,7 +70,7 @@ func (nh *NotificationHandler) GetNotifications(w http.ResponseWriter, r *http.R
 func (nh *NotificationHandler) GetNotificationByID(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "incorrect id format"+err.Error())
+		ErrorResponse(w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		return
 	}
 	notificationByID, err := nh.sv.GetByID(id)
@@ -75,7 +79,8 @@ func (nh *NotificationHandler) GetNotificationByID(w http.ResponseWriter, r *htt
 		return
 	}
 	if err != nil {
-		ErrorResponse(w, http.StatusInternalServerError, err.Error())
+		log.Println("COuldn't retrieve notification: " + err.Error())
+		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 
@@ -87,7 +92,8 @@ func (nh *NotificationHandler) GetNotificationsByStatus(w http.ResponseWriter, r
 	status := model.NotificationStatus(chi.URLParam(r, "status"))
 	notifications, err := nh.sv.GetByStatus(status, userId)
 	if err != nil {
-		ErrorResponse(w, http.StatusInternalServerError, err.Error())
+		log.Println("Couldn't retrieve notification: " + err.Error())
+		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 	SuccessResp(w, http.StatusOK, notifications)
@@ -100,7 +106,7 @@ func (nh *NotificationHandler) UpdateNotificationStatusByID(w http.ResponseWrite
 	}
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "incorrect id: "+err.Error())
+		ErrorResponse(w, http.StatusBadRequest, "incorrect id")
 		return
 	}
 	var req struct {
@@ -108,12 +114,13 @@ func (nh *NotificationHandler) UpdateNotificationStatusByID(w http.ResponseWrite
 	}
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "Invalid request: "+err.Error())
+		ErrorResponse(w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		return
 	}
 	notification, err := nh.sv.UpdateStatusByID(id, req.Status)
 	if err != nil {
-		ErrorResponse(w, http.StatusInternalServerError, "Couldn't update the status: "+err.Error())
+		log.Println("Couldn't update the status: " + err.Error())
+		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 	SuccessResp(w, http.StatusOK, notification)
@@ -126,11 +133,12 @@ func (nh *NotificationHandler) DeleteNotificationByID(w http.ResponseWriter, r *
 	}
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "incorrect id: "+err.Error())
+		ErrorResponse(w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		return
 	}
 	if err = nh.sv.DeleteByID(id); err != nil {
-		ErrorResponse(w, http.StatusInternalServerError, "Internal error: "+err.Error())
+		log.Println("Internal error: " + err.Error())
+		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 	}
 	SuccessResp(w, http.StatusOK, nil)
 }
