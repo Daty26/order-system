@@ -7,6 +7,7 @@ import (
 	"github.com/Daty26/order-system/order-service/internal/model"
 	"github.com/Daty26/order-system/order-service/internal/service"
 	"github.com/go-chi/chi/v5"
+	"log"
 	"net/http"
 	"strconv"
 )
@@ -31,7 +32,8 @@ func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 	if role == "ADMIN" {
 		orders, err := h.service.GetOrders()
 		if err != nil {
-			ErrorResponse(w, http.StatusInternalServerError, "couldn't fetch orders")
+			log.Println("couldn't fetch orders: " + err.Error())
+			ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 			return
 		}
 		SuccessResp(w, http.StatusOK, orders)
@@ -39,7 +41,8 @@ func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 	}
 	orders, err := h.service.GetOrdersByUserId(userId)
 	if err != nil {
-		ErrorResponse(w, http.StatusInternalServerError, "couldn't fetch orders of specified user")
+		log.Println("couldn't fetch orders of specified user: " + err.Error())
+		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 	SuccessResp(w, http.StatusOK, orders)
@@ -57,12 +60,13 @@ func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "Invalid ID")
+		ErrorResponse(w, http.StatusBadRequest, "Invalid order ID")
 		return
 	}
 	order, err := h.service.GetOrderByID(id)
 	if err != nil {
-		ErrorResponse(w, http.StatusNotFound, "Couldn't find order with specified id")
+		log.Println("Couldn't find order with specified id: " + err.Error())
+		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 	SuccessResp(w, http.StatusOK, order)
@@ -98,14 +102,14 @@ func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "Invalid ID")
+		ErrorResponse(w, http.StatusBadRequest, "Invalid order ID")
 		return
 	}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	err = dec.Decode(&req)
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "Couldn't convert the req body to specified format")
+		ErrorResponse(w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		return
 	}
 	if len(req.Items) == 0 {
@@ -135,7 +139,8 @@ func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	updatedOrder, err := h.service.UpdateOrder(order)
 	if err != nil {
-		ErrorResponse(w, http.StatusInternalServerError, "Couldn't update order")
+		log.Println("Couldn't update order: " + err.Error())
+		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 	SuccessResp(w, http.StatusOK, updatedOrder)
@@ -196,11 +201,11 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&req); err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "invalid request format: "+err.Error())
+		ErrorResponse(w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
 		return
 	}
 	if len(req.Items) == 0 {
-		ErrorResponse(w, http.StatusBadRequest, "can't create empty order")
+		ErrorResponse(w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest)+": can't create empty order")
 		return
 	}
 	items := make([]model.OrderItems, 0)
@@ -224,7 +229,8 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	createdOrder, err := h.service.CreateOrder(order)
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, err.Error())
+		log.Println("Couldn't create order: " + err.Error())
+		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 	SuccessResp(w, http.StatusCreated, createdOrder)
