@@ -5,6 +5,7 @@ import (
 	"github.com/Daty26/order-system/inventory-service/internal/model"
 	"github.com/Daty26/order-system/inventory-service/internal/service"
 	"github.com/go-chi/chi/v5"
+	"log"
 	"net/http"
 	"strconv"
 )
@@ -19,7 +20,8 @@ func NewInventoryHandler(serv *service.InventoryService) *InventoryHandler {
 func (ih *InventoryHandler) GetAllProducts(w http.ResponseWriter, r *http.Request) {
 	products, err := ih.serv.GetAll()
 	if err != nil {
-		ErrorResponse(w, http.StatusInternalServerError, err.Error())
+		log.Println(err.Error())
+		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 	SuccessResponse(w, http.StatusOK, products)
@@ -36,7 +38,8 @@ func (ih *InventoryHandler) InsertProduct(w http.ResponseWriter, r *http.Request
 	}
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "Incorrect req format: "+err.Error())
+		log.Printf("failed to decode request: %v", err)
+		ErrorResponse(w, http.StatusBadRequest, "Incorrect req body")
 		return
 	}
 	product := model.Product{
@@ -46,7 +49,8 @@ func (ih *InventoryHandler) InsertProduct(w http.ResponseWriter, r *http.Request
 	}
 	productCreated, err := ih.serv.Insert(product)
 	if err != nil {
-		ErrorResponse(w, http.StatusInternalServerError, err.Error())
+		log.Printf("failed to insert product: %v", err)
+		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 	SuccessResponse(w, http.StatusCreated, productCreated)
@@ -54,7 +58,7 @@ func (ih *InventoryHandler) InsertProduct(w http.ResponseWriter, r *http.Request
 func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "Couldn't convert string to int: "+err.Error())
+		ErrorResponse(w, http.StatusBadRequest, "Invalid request uri path")
 		return
 	}
 	if r.Context().Value("role") != "ADMIN" {
@@ -66,12 +70,13 @@ func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Reques
 	}
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, err.Error())
+		ErrorResponse(w, http.StatusBadRequest, "invalid req body")
 		return
 	}
 	quantity, err := ih.serv.UpdateQuantity(id, req.Quantity)
 	if err != nil {
-		ErrorResponse(w, http.StatusInternalServerError, err.Error())
+		log.Printf("Couldn't update quantity: %s", err.Error())
+		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 	SuccessResponse(w, http.StatusOK, quantity)
@@ -79,7 +84,7 @@ func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Reques
 func (ih *InventoryHandler) UpdatePrice(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, err.Error())
+		ErrorResponse(w, http.StatusBadRequest, "Invalid request uri path")
 		return
 	}
 	if r.Context().Value("role") != "ADMIN" {
@@ -91,12 +96,13 @@ func (ih *InventoryHandler) UpdatePrice(w http.ResponseWriter, r *http.Request) 
 	}
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "Couldn't decode price "+err.Error())
+		ErrorResponse(w, http.StatusBadRequest, "Invalid req body")
 		return
 	}
 	price, err := ih.serv.UpdatePrice(id, req.Price)
 	if err != nil {
-		ErrorResponse(w, http.StatusInternalServerError, err.Error())
+		log.Printf("Couldn't update price: %s", err.Error())
+		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		return
 	}
 	SuccessResponse(w, http.StatusOK, price)

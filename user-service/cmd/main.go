@@ -19,6 +19,12 @@ func main() {
 	handler := api.NewUserHandler(srv)
 
 	r := chi.NewRouter()
+	r.Get("/health", func(writer http.ResponseWriter, request *http.Request) {
+		_, err := writer.Write([]byte("user-service is working"))
+		if err != nil {
+			return
+		}
+	})
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.AuthMiddleware)
 		r.Get("/user/me", handler.Me)
