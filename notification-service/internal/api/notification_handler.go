@@ -106,7 +106,7 @@ func (nh *NotificationHandler) UpdateNotificationStatusByID(w http.ResponseWrite
 	}
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "incorrect id")
+		ErrorResponse(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
 		return
 	}
 	var req struct {
@@ -133,7 +133,7 @@ func (nh *NotificationHandler) DeleteNotificationByID(w http.ResponseWriter, r *
 	}
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+		ErrorResponse(w, http.StatusBadRequest, http.StatusText(http.StatusNotFound))
 		return
 	}
 	if err = nh.sv.DeleteByID(id); err != nil {

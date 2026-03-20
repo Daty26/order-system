@@ -60,7 +60,7 @@ func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "Invalid order ID")
+		ErrorResponse(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
 		return
 	}
 	order, err := h.service.GetOrderByID(id)
@@ -102,7 +102,7 @@ func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "Invalid order ID")
+		ErrorResponse(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
 		return
 	}
 	dec := json.NewDecoder(r.Body)
@@ -160,7 +160,7 @@ func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "Invalid id")
+		ErrorResponse(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
 		return
 	}
 	err = h.service.DeleteOrder(id)

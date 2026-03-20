@@ -58,7 +58,7 @@ func (ih *InventoryHandler) InsertProduct(w http.ResponseWriter, r *http.Request
 func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "Invalid request uri path")
+		ErrorResponse(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
 		return
 	}
 	if r.Context().Value("role") != "ADMIN" {
@@ -84,7 +84,7 @@ func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Reques
 func (ih *InventoryHandler) UpdatePrice(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "Invalid request uri path")
+		ErrorResponse(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
 		return
 	}
 	if r.Context().Value("role") != "ADMIN" {
