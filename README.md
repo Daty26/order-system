@@ -14,20 +14,46 @@ The project is split into five services:
 | Notification service | `8082` -> internal `8083` | `notifications` | Stores notifications after payments complete |
 | Inventory service | `8084` | `inventory` | Stores products and reduces stock after orders |
 
-Kafka is used to connect the services:
 
-```text
-order-service
-  publishes order.created
-        |
-        +--> payment-service creates a payment
-        +--> inventory-service reduces product stock
+```mermaid
+flowchart LR
+    Client[Client / API User]
 
-payment-service
-  publishes payment.completed
-        |
-        +--> notification-service creates a notification
+    UserService[User Service]
+    OrderService[Order Service]
+    PaymentService[Payment Service]
+    InventoryService[Inventory Service]
+    NotificationService[Notification Service]
+
+    UserDB[(Users DB)]
+    OrderDB[(Orders DB)]
+    PaymentDB[(Payments DB)]
+    InventoryDB[(Inventory DB)]
+    NotificationDB[(Notifications DB)]
+
+    Kafka[[Kafka]]
+
+    Client --> UserService
+    Client --> OrderService
+    Client --> PaymentService
+    Client --> InventoryService
+    Client --> NotificationService
+
+
+    UserService --> UserDB
+    OrderService --> OrderDB
+    PaymentService --> PaymentDB
+    InventoryService --> InventoryDB
+    NotificationService --> NotificationDB
+
+    OrderService -- order.created --> Kafka
+    Kafka -- order.created --> PaymentService
+    Kafka -- order.created --> InventoryService
+
+    PaymentService -- payment.completed --> Kafka
+    Kafka -- payment.completed --> NotificationService
 ```
+
 
 ## Tech Stack
 
