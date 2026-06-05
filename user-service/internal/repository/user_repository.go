@@ -42,7 +42,7 @@ func (pr *PostgresRepository) Create(ctx context.Context, input CreateUserParams
 		var pgError *pq.Error
 		if errors.As(err, &pgError) && pgError.Code == "23505" {
 			switch pgError.Constraint{
-			case "users_name_key":
+			case "users_usersname_key":
 				return model.UserSummary{}, ErrDuplicateUsername
 			case "users_email_key":
 				return model.UserSummary{}, ErrDuplicateEmail
@@ -73,6 +73,7 @@ func (pr *PostgresRepository) GetByID(ctx context.Context, id int) (model.UserSu
 func (r *PostgresRepository) GetAll(ctx context.Context, limit, offset int) ([]model.UserSummary, error) {
 	query := `
 	SELECT id, username, email, role, created_at FROM users
+	ORDER BY id
 	LIMIT $1 OFFSET $2
 	`
 	rows, err := r.db.QueryContext(ctx, query, limit, offset)

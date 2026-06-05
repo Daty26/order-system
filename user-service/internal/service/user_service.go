@@ -16,13 +16,12 @@ import (
 
 type UserService struct {
 	rep       repository.UserRepository
-	JWTSecret string 
+	JWTSecret string
 }
 
 func NewUserService(repo repository.UserRepository, jwtSecret string) *UserService {
 	return &UserService{rep: repo, JWTSecret: jwtSecret}
 }
-
 
 func (s *UserService) CreateUser(ctx context.Context, input CreateUserInput) (model.UserSummary, error) {
 	if _, err := mail.ParseAddress(input.Email); err != nil {
@@ -49,7 +48,8 @@ func (s *UserService) CreateUser(ctx context.Context, input CreateUserInput) (mo
 	userSummary, err := s.rep.Create(ctx, userParams)
 	if err != nil {
 		if errors.Is(err, repository.ErrDuplicateUsername) ||
-			errors.Is(err, repository.ErrDuplicateEmail) {
+			errors.Is(err, repository.ErrDuplicateEmail) ||
+			errors.Is(err, repository.ErrDuplicateUser) {
 			return model.UserSummary{}, ErrUserAlreadyExists
 		}
 		return model.UserSummary{}, fmt.Errorf("create user: %w", err)
@@ -60,9 +60,6 @@ func (s *UserService) CreateUser(ctx context.Context, input CreateUserInput) (mo
 func (s *UserService) LoginUser(ctx context.Context, input LoginUserInput) (model.UserSummary, string, error) {
 	if input.Identifier == "" || input.Password == "" {
 		return model.UserSummary{}, "", ErrInvalidCredentials
-	}
-	if len(s.JWTSecret) == 0 {
-		return model.UserSummary{}, "", errors.New("JWT secret is not configured")
 	}
 	user, err := s.rep.GetByIdentifierForAuth(ctx, input.Identifier)
 	if err != nil {
@@ -111,7 +108,7 @@ func (s *UserService) GetAll(ctx context.Context, limit, offset int) ([]model.Us
 		limit = 100
 	}
 	if offset < 0 {
-		return nil, fmt.Errorf("offset mut not be negative")
+		return nil, fmt.Errorf("offset must not be negative")
 	}
 	users, err := s.rep.GetAll(ctx, limit, offset)
 	if err != nil {

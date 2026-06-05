@@ -16,8 +16,12 @@ import (
 func main() {
 	db.DBInit()
 	defer db.DBConn.Close()
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == ""{
+		log.Fatal("JWT_SECRET is required")
+	}
 	repo := repository.NewPostgresRepository(db.DBConn)
-	srv := service.NewUserService(repo, os.Getenv("JWT_SECRET"))
+	srv := service.NewUserService(repo, jwtSecret)
 	handler := transport_http_handler.NewUserHandler(srv)
 
 	r := chi.NewRouter()
