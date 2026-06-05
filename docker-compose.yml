@@ -35,15 +35,21 @@ services:
     ports:
       - "5434:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d notifications"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   notification-service:
     build: ./notification-service
-    env_file:
-      - ./notification-service/.env
+    environment:
+      DB_HOST: postgres-notifications
+      DB_PORT: "5432"
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: notifications
+      JWT_SECRET: ${JWT_SECRET}
+      KAFKA_BROKERS: ${KAFKA_BROKER}
     ports:
       - "8082:8083"
     depends_on:
@@ -64,15 +70,21 @@ services:
     ports:
       - "5435:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d payments"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   payment-service:
     build: ./payment-service
-    env_file:
-      - ./payment-service/.env
+    environment:
+      DB_HOST: postgres-payment
+      DB_PORT: "5432"
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: payments
+      JWT_SECRET: ${JWT_SECRET}
+      KAFKA_BROKERS: ${KAFKA_BROKER}
     ports:
       - "8081:8081"
     depends_on:
@@ -93,15 +105,21 @@ services:
     ports:
       - "5433:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d orders"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   order-service:
     build: ./order-service
-    env_file:
-      - ./order-service/.env
+    environment:
+      DB_HOST: postgres-order
+      DB_PORT: "5432"
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: orders
+      JWT_SECRET: ${JWT_SECRET}
+      KAFKA_BROKERS: ${KAFKA_BROKER}
     ports:
       - "8080:8080"
     depends_on:
@@ -122,15 +140,21 @@ services:
     ports:
       - "5431:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d inventory"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   inventory-service:
     build: ./inventory-service
-    env_file:
-      - ./inventory-service/.env
+    environment:
+      DB_HOST: postgres-inventory
+      DB_PORT: "5432"
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: inventory
+      JWT_SECRET: ${JWT_SECRET}
+      KAFKA_BROKERS: ${KAFKA_BROKER}
     ports:
       - "8084:8084"
     depends_on:
@@ -151,15 +175,21 @@ services:
     ports:
       - "5430:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d users"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   user-service:
     build: ./user-service
-    env_file:
-      - ./user-service/.env
+    environment:
+      DB_HOST: postgres-user
+      DB_PORT: "5432"
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: users
+      JWT_SECRET: ${JWT_SECRET}
+      KAFKA_BROKERS: ${KAFKA_BROKER}
     ports:
       - "8085:8085"
     depends_on:

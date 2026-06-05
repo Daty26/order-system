@@ -1,71 +1,78 @@
 package service
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/mail"
+	"time"
+
 	"github.com/Daty26/order-system/user-service/internal/model"
 	"github.com/Daty26/order-system/user-service/internal/repository"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
-	"net/mail"
-	"os"
-	"time"
 )
 
 type UserService struct {
-	rep repository.UserRepository
+	rep       repository.UserRepository
+	JWTSecret string 
 }
 
-func NewUserService(repo repository.UserRepository) *UserService {
-	return &UserService{rep: repo}
+func NewUserService(repo repository.UserRepository, jwtSecret string) *UserService {
+	return &UserService{rep: repo, JWTSecret: jwtSecret}
 }
 
-var ErrInvalidCredentials = errors.New("invalid creadentials")
-var ErrIncorrectID = errors.New("user with such id doesn't exist")
-var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
-func (us *UserService) CreateUser(u model.User) (model.User, error) {
-	_, err := mail.ParseAddress(u.Email)
-	if err != nil {
-		fmt.Printf("%s is invalid: %v\n", u.Email, err)
-		return model.User{}, errors.New("Email is invalid: " + err.Error())
+func (s *UserService) CreateUser(ctx context.Context, input CreateUserInput) (model.UserSummary, error) {
+	if _, err := mail.ParseAddress(input.Email); err != nil {
+		return model.UserSummary{}, fmt.Errorf("invalid email: %w", ErrInvalidUserInput)
 
 	}
-	if len(u.Password) <= 6 {
-		return model.User{}, errors.New("password can't be less than 6 characters")
+	if len(input.Password) >= 6 {
+		return model.UserSummary{}, fmt.Errorf("password must be at least 6 characters long: %w", ErrInvalidUserInput)
 	}
-	if len(u.Username) < 3 {
-		return model.User{}, errors.New("username can't be less than 3 characters")
+	if len(input.Username) > 3 {
+		return model.UserSummary{}, fmt.Errorf("username must be at least 3 characters long: %w", ErrInvalidUserInput)
 	}
-	if u.Role != model.UserRole && u.Role != model.AdminRole {
-		return model.User{}, errors.New("received wrong role")
-	}
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return model.User{}, err
+		return model.UserSummary{}, fmt.Errorf("hash password: %w", err)
 	}
-	u.Password = string(hashedPassword)
 
-	createdUser, err := us.rep.Create(u)
-	if err != nil {
-		return model.User{}, err
+	userParams := repository.CreateUserParams{
+		Email:        input.Email,
+		Username:     input.Username,
+		PasswordHash: string(hashedPassword),
+		Role:         model.UserRole,
 	}
-	u.Password = ""
-	return createdUser, nil
+	userSummary, err := s.rep.Create(ctx, userParams)
+	if err != nil {
+		if errors.Is(err, repository.ErrDuplicateUsername) ||
+			errors.Is(err, repository.ErrDuplicateEmail) {
+			return model.UserSummary{}, ErrUserAlreadyExists
+		}
+		return model.UserSummary{}, fmt.Errorf("create user: %w", err)
+	}
+	return userSummary, nil
 }
 
-func (us *UserService) Login(identifier string, password string) (model.User, string, error) {
-
-	user, err := us.rep.GetByUsernameOrEmail(identifier)
+func (s *UserService) LoginUser(ctx context.Context, input LoginUserInput) (model.UserSummary, string, error) {
+	if input.Identifier == "" || input.Password == "" {
+		return model.UserSummary{}, "", ErrInvalidCredentials
+	}
+	if len(s.JWTSecret) == 0 {
+		return model.UserSummary{}, "", errors.New("JWT secret is not configured")
+	}
+	user, err := s.rep.GetByIdentifierForAuth(ctx, input.Identifier)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return model.User{}, "", ErrInvalidCredentials
+			return model.UserSummary{}, "", ErrInvalidCredentials
 		}
-		return model.User{}, "", err
+		return model.UserSummary{}, "", err
 	}
-	if err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
-		return model.User{}, "", ErrInvalidCredentials
+	if err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password)); err != nil {
+		return model.UserSummary{}, "", ErrInvalidCredentials
 	}
 	claims := jwt.MapClaims{
 		"user_id":  user.ID,
@@ -74,25 +81,41 @@ func (us *UserService) Login(identifier string, password string) (model.User, st
 		"exp":      time.Now().Add(time.Hour * 24).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString(jwtSecret)
+	tokenString, err := token.SignedString([]byte(s.JWTSecret))
 	if err != nil {
-		return model.User{}, "", err
+		return model.UserSummary{}, "", err
 	}
-	user.Password = ""
-	return user, tokenString, nil
+	return model.UserSummary{
+		ID:        user.ID,
+		Username:  user.Username,
+		Email:     user.Email,
+		Role:      user.Role,
+		CreatedAt: user.CreatedAt,
+	}, tokenString, nil
 }
-func (us *UserService) GetByID(id int) (model.User, error) {
-	if id < 0 {
-		return model.User{}, errors.New("incorrect id")
-	}
-	user, err := us.rep.GetByID(id)
+func (s *UserService) GetByID(ctx context.Context, id int) (model.UserSummary, error) {
+	user, err := s.rep.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return model.User{}, ErrIncorrectID
+			return model.UserSummary{}, ErrNotFound
 		}
-		return model.User{}, err
+		return model.UserSummary{}, err
 	}
-	user.Password = ""
 	return user, nil
-
+}
+func (s *UserService) GetAll(ctx context.Context, limit, offset int) ([]model.UserSummary, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	if offset < 0 {
+		return nil, fmt.Errorf("offset mut not be negative")
+	}
+	users, err := s.rep.GetAll(ctx, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("get all users: %w", err)
+	}
+	return users, nil
 }

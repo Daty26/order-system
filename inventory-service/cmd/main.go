@@ -41,8 +41,8 @@ func main() {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.AuthMiddleware)
 		r.Post("/products", handler.InsertProduct)
-		r.Put("/products/{id}", handler.UpdateQuantity)
-		r.Put("/products/{id}", handler.UpdatePrice)
+		r.Put("/products/{id}/quantity", handler.UpdateQuantity)
+		r.Put("/products/{id}/price", handler.UpdatePrice)
 	})
 	r.Get("/products", handler.GetAllProducts)
 	err := http.ListenAndServe(":8084", r)

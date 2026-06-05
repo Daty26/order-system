@@ -2,18 +2,26 @@ package model
 
 import "time"
 
-type Roles string
+type Role string
 
 var (
-	UserRole  Roles = "USER"
-	AdminRole Roles = "ADMIN"
+	UserRole  Role = "USER"
+	AdminRole Role = "ADMIN"
 )
 
 type User struct {
 	ID        int       `json:"id"`
 	Username  string    `json:"username"`
 	Email     string    `json:"email"`
-	Password  string    `json:"password"`
-	Role      Roles     `json:"role"`
+	PasswordHash  string    `json:"-"`
+	Role      Role     `json:"role"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type UserSummary struct {
+	ID        int
+	Username  string
+	Email     string
+	Role      Role
+	CreatedAt time.Time
 }

@@ -8,3 +8,5 @@ require (
 	github.com/lib/pq v1.11.2
 	golang.org/x/crypto v0.48.0
 )
+
+require github.com/kelseyhightower/envconfig v1.4.0 // indirect

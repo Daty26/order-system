@@ -14,6 +14,8 @@ The project is split into five services:
 | Notification service | `8082` -> internal `8083` | `notifications` | Stores notifications after payments complete |
 | Inventory service | `8084` | `inventory` | Stores products and reduces stock after orders |
 
+The React client lives in a separate root-level `frontend/` package. It is a client for the whole system, so it should sit next to the services instead of inside any one service folder.
+
 
 ```mermaid
 flowchart LR
@@ -75,7 +77,8 @@ flowchart LR
 ├── order-service/
 ├── payment-service/
 ├── inventory-service/
-└── notification-service/
+├── notification-service/
+└── frontend/              # React + Vite client
 ```
 
 Each service follows roughly the same shape:
@@ -94,6 +97,18 @@ Each service follows roughly the same shape:
 ```
 
 Some services also have `internal/kafka/` for producers or consumers.
+
+## Frontend
+
+Start the backend stack, then run the React client:
+
+```sh
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend is available at `http://localhost:5173`. During development, Vite proxies `/api/*` requests to the appropriate Go service.
 
 ## Architecture
 

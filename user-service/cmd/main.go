@@ -1,22 +1,24 @@
 package main
 
 import (
-	"github.com/Daty26/order-system/user-service/internal/api"
+	"log"
+	"net/http"
+	"os"
+
 	"github.com/Daty26/order-system/user-service/internal/db"
 	"github.com/Daty26/order-system/user-service/internal/middleware"
 	"github.com/Daty26/order-system/user-service/internal/repository"
 	"github.com/Daty26/order-system/user-service/internal/service"
+	transport_http_handler "github.com/Daty26/order-system/user-service/internal/transport/http/handler"
 	"github.com/go-chi/chi/v5"
-	"log"
-	"net/http"
 )
 
 func main() {
 	db.DBInit()
 	defer db.DBConn.Close()
 	repo := repository.NewPostgresRepository(db.DBConn)
-	srv := service.NewUserService(repo)
-	handler := api.NewUserHandler(srv)
+	srv := service.NewUserService(repo, os.Getenv("JWT_SECRET"))
+	handler := transport_http_handler.NewUserHandler(srv)
 
 	r := chi.NewRouter()
 	r.Get("/health", func(writer http.ResponseWriter, request *http.Request) {
@@ -30,7 +32,7 @@ func main() {
 		r.Get("/user/me", handler.Me)
 	})
 	r.Post("/user/register", handler.CreateUser)
-	r.Post("/user/login", handler.Login)
+	r.Post("/user/login", handler.LoginUser)
 	log.Println("starting user service on port 8085")
 	err := http.ListenAndServe(":8085", r)
 	if err != nil {
