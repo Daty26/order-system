@@ -29,10 +29,10 @@ func (s *UserService) CreateUser(ctx context.Context, input CreateUserInput) (mo
 		return model.UserSummary{}, fmt.Errorf("invalid email: %w", ErrInvalidUserInput)
 
 	}
-	if len(input.Password) >= 6 {
+	if len(input.Password) < 6 {
 		return model.UserSummary{}, fmt.Errorf("password must be at least 6 characters long: %w", ErrInvalidUserInput)
 	}
-	if len(input.Username) > 3 {
+	if len(input.Username) < 3 {
 		return model.UserSummary{}, fmt.Errorf("username must be at least 3 characters long: %w", ErrInvalidUserInput)
 	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
