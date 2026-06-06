@@ -103,7 +103,7 @@ function App() {
             username: data.get("username"),
             email: data.get("email"),
             password: data.get("password"),
-            role: data.get("role")
+            role: "USER"
           })
         });
       }
@@ -214,13 +214,6 @@ function App() {
                 <label>
                   Email
                   <input name="email" type="email" placeholder="alex@example.com" required />
-                </label>
-                <label>
-                  Role
-                  <select name="role" defaultValue="USER">
-                    <option value="USER">User</option>
-                    <option value="ADMIN">Admin</option>
-                  </select>
                 </label>
               </>
             ) : (

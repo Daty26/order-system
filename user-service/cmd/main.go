@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -20,9 +21,13 @@ func main() {
 	if jwtSecret == "" {
 		log.Fatal("JWT_SECRET is required")
 	}
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
 	repo := repository.NewPostgresRepository(db.DBConn)
 	srv := service.NewUserService(repo, jwtSecret)
-	handler := transport_http_handler.NewUserHandler(srv)
+	handler := transport_http_handler.NewUserHandler(srv, logger)
 
 	r := chi.NewRouter()
 	r.Get("/health", func(writer http.ResponseWriter, request *http.Request) {

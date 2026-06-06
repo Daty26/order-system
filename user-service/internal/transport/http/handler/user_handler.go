@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/Daty26/order-system/user-service/internal/service"
@@ -13,19 +14,26 @@ import (
 
 type UserHandler struct {
 	service *service.UserService
+	logger  *slog.Logger
 }
 
-func NewUserHandler(service *service.UserService) *UserHandler {
-	return &UserHandler{service: service}
+func NewUserHandler(service *service.UserService, logger *slog.Logger) *UserHandler {
+	return &UserHandler{service: service, logger: logger}
 }
 
 func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	var request transport_http_dto.LoginUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		h.logger.WarnContext(
+			r.Context(),
+			"invalid login request body",
+			"error", err,
+		)
+
 		transport_http_response.ErrorJSON(
 			w,
 			http.StatusBadRequest,
-			fmt.Sprintf("invalid request body: %s", err.Error()),
+			"invalid request body",
 		)
 		return
 	}
@@ -43,6 +51,12 @@ func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 			)
 			return
 		}
+		h.logger.ErrorContext(
+			r.Context(),
+			"failed to login user",
+			"error", err,
+		)
+
 		transport_http_response.ErrorJSON(
 			w,
 			http.StatusInternalServerError,
@@ -61,7 +75,11 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var request transport_http_dto.CreateUserRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		transport_http_response.ErrorJSON(w, http.StatusBadRequest, err.Error())
+		h.logger.WarnContext(r.Context(),
+			"invalid user req body",
+			"error", err,
+		)
+		transport_http_response.ErrorJSON(w, http.StatusBadRequest, "invalid req body")
 		return
 	}
 	input := service.CreateUserInput{
@@ -72,13 +90,14 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	userSummary, err := h.service.CreateUser(r.Context(), input)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidUserInput) {
-			transport_http_response.ErrorJSON(w, http.StatusBadRequest, err.Error())
+			transport_http_response.ErrorJSON(w, http.StatusBadRequest, "invalid req body")
 			return
 		}
 		if errors.Is(err, service.ErrUserAlreadyExists) {
-			transport_http_response.ErrorJSON(w, http.StatusConflict, err.Error())
+			transport_http_response.ErrorJSON(w, http.StatusConflict, "user already exists")
 			return
 		}
+		h.logger.ErrorContext(r.Context(), "failed to create user", "error", err)
 		transport_http_response.ErrorJSON(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
@@ -89,10 +108,11 @@ func (h *UserHandler) Me(w http.ResponseWriter, r *http.Request) {
 	user, err := h.service.GetByID(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, service.ErrNotFound) {
-			transport_http_response.ErrorJSON(w, http.StatusNotFound, err.Error())
+			transport_http_response.ErrorJSON(w, http.StatusNotFound, "user not found")
 			return
 		}
-		transport_http_response.ErrorJSON(w, http.StatusInternalServerError, err.Error())
+		h.logger.ErrorContext(r.Context(), "failed to get me", "error", err)
+		transport_http_response.ErrorJSON(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
 	transport_http_response.SuccessJSON(w, http.StatusOK, user)
@@ -105,7 +125,8 @@ func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	}
 	users, err := h.service.GetAll(r.Context(), limit, offset)
 	if err != nil {
-		transport_http_response.ErrorJSON(w, http.StatusBadRequest, "something went wrong: "+err.Error())
+		h.logger.ErrorContext(r.Context(), "failed to get all users", "error", err)
+		transport_http_response.ErrorJSON(w, http.StatusBadRequest, "something went wrong")
 		return
 	}
 	transport_http_response.SuccessJSON(w, http.StatusOK, users)
