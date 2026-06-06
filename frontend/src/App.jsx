@@ -3,10 +3,12 @@ import {
   Bell,
   Boxes,
   CreditCard,
+  Layers3,
   LogOut,
   PackagePlus,
   RefreshCw,
   ShoppingCart,
+  Warehouse,
   UserRound
 } from "lucide-react";
 import { clearSession, readSession, request, saveSession } from "./api.js";
@@ -287,10 +289,10 @@ function App() {
         </header>
 
         <section className="metrics">
-          <Metric label="Products" value={totals.products} />
-          <Metric label="Orders" value={totals.orders} />
-          <Metric label="Stock units" value={totals.stock} />
-          <Metric label="Payment volume" value={currency(totals.revenue)} />
+          <Metric icon={Boxes} label="Products" value={totals.products} />
+          <Metric icon={ShoppingCart} label="Orders" value={totals.orders} />
+          <Metric icon={Warehouse} label="Stock units" value={totals.stock} />
+          <Metric icon={CreditCard} label="Payment volume" value={currency(totals.revenue)} />
         </section>
 
         {status ? <p className="status error">{status}</p> : null}
@@ -311,11 +313,16 @@ function App() {
   );
 }
 
-function Metric({ label, value }) {
+function Metric({ icon: Icon, label, value }) {
   return (
     <article className="metric">
-      <span>{label}</span>
-      <strong>{value}</strong>
+      <div className="metric-icon">
+        <Icon size={18} />
+      </div>
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
     </article>
   );
 }
@@ -346,6 +353,8 @@ function ProductsView({ products, isAdmin, onCreateProduct, loading }) {
       ) : null}
 
       <DataTable
+        title="Products"
+        count={products.length}
         columns={["ID", "Name", "Stock", "Price"]}
         rows={products.map((product) => [
           product.id,
@@ -385,6 +394,8 @@ function OrdersView({ orders, products, onCreateOrder, loading }) {
       </form>
 
       <DataTable
+        title="Orders"
+        count={orders.length}
         columns={["ID", "Status", "Total", "Items"]}
         rows={orders.map((order) => [
           order.id,
@@ -401,6 +412,8 @@ function OrdersView({ orders, products, onCreateOrder, loading }) {
 function PaymentsView({ payments }) {
   return (
     <DataTable
+      title="Payments"
+      count={payments.length}
       columns={["ID", "Order", "Status", "Amount"]}
       rows={payments.map((payment) => [
         payment.payment_id,
@@ -416,6 +429,8 @@ function PaymentsView({ payments }) {
 function NotificationsView({ notifications }) {
   return (
     <DataTable
+      title="Notifications"
+      count={notifications.length}
       columns={["ID", "Order", "Status", "Message"]}
       rows={notifications.map((notification) => [
         notification.id,
@@ -428,35 +443,44 @@ function NotificationsView({ notifications }) {
   );
 }
 
-function DataTable({ columns, rows, empty }) {
+function DataTable({ title, count, columns, rows, empty }) {
   return (
     <div className="table-shell">
-      <table>
-        <thead>
-          <tr>
-            {columns.map((column) => (
-              <th key={column}>{column}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length > 0 ? (
-            rows.map((row, rowIndex) => (
-              <tr key={rowIndex}>
-                {row.map((cell, cellIndex) => (
-                  <td key={`${rowIndex}-${cellIndex}`}>{cell}</td>
-                ))}
-              </tr>
-            ))
-          ) : (
+      <div className="table-title">
+        <div>
+          <h3>{title}</h3>
+          <span>{count} total</span>
+        </div>
+        <Layers3 size={18} />
+      </div>
+      <div className="table-scroll">
+        <table>
+          <thead>
             <tr>
-              <td colSpan={columns.length} className="empty">
-                {empty}
-              </td>
+              {columns.map((column) => (
+                <th key={column}>{column}</th>
+              ))}
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.length > 0 ? (
+              rows.map((row, rowIndex) => (
+                <tr key={rowIndex}>
+                  {row.map((cell, cellIndex) => (
+                    <td key={`${rowIndex}-${cellIndex}`}>{cell}</td>
+                  ))}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={columns.length} className="empty">
+                  {empty}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

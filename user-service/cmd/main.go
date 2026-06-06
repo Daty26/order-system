@@ -17,7 +17,7 @@ func main() {
 	db.DBInit()
 	defer db.DBConn.Close()
 	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == ""{
+	if jwtSecret == "" {
 		log.Fatal("JWT_SECRET is required")
 	}
 	repo := repository.NewPostgresRepository(db.DBConn)
@@ -37,6 +37,7 @@ func main() {
 	})
 	r.Post("/user/register", handler.CreateUser)
 	r.Post("/user/login", handler.LoginUser)
+	r.Get("/users", handler.GetAll)
 	log.Println("starting user service on port 8085")
 	err := http.ListenAndServe(":8085", r)
 	if err != nil {
