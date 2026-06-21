@@ -3,7 +3,6 @@ package transport_http_handler
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 
