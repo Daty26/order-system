@@ -1,28 +1,29 @@
 package service
 
 import (
+	"context"
+	"database/sql"
 	"errors"
+	"fmt"
+
 	"github.com/Daty26/order-system/inventory-service/internal/model"
 	"github.com/Daty26/order-system/inventory-service/internal/repository"
 )
 
 type InventoryService struct {
-	repo repository.InventoryRepository
+	repo *repository.PostgresInventoryRepo
 }
 
-func NewInventoryService(inventoryService repository.InventoryRepository) *InventoryService {
-	return &InventoryService{repo: inventoryService}
+func NewInventoryService(inventoryRepo *repository.PostgresInventoryRepo) *InventoryService {
+	return &InventoryService{repo: inventoryRepo}
 }
 
 func (is *InventoryService) GetAll() ([]model.Product, error) {
 	return is.repo.GetAll()
 }
 func (is *InventoryService) Insert(product model.Product) (model.Product, error) {
-	if product.Quantity < 0 {
-		return model.Product{}, errors.New("quantity can't be less than 0")
-	}
-	if product.Price < 0 {
-		return model.Product{}, errors.New("price can't be less than 0")
+	if product.Quantity < 0 || product.Price < 0 {
+		return model.Product{}, ErrInvalidInput
 	}
 	if len(product.Name) == 0 {
 		return model.Product{}, errors.New("name can't be empty")
@@ -30,14 +31,10 @@ func (is *InventoryService) Insert(product model.Product) (model.Product, error)
 	return is.repo.Insert(product)
 }
 func (is *InventoryService) UpdateQuantity(id int, quantity int) (model.Product, error) {
-	if id < 0 {
-		return model.Product{}, errors.New("incorrect id")
-	}
 	if quantity < 0 {
-		return model.Product{}, errors.New("quantity can't be less than 0")
+		return model.Product{}, ErrInvalidInput
 	}
 	return is.repo.UpdateQuantity(id, quantity)
-
 }
 func (is *InventoryService) UpdatePrice(id int, price float64) (model.Product, error) {
 	if id < 0 {
@@ -48,18 +45,16 @@ func (is *InventoryService) UpdatePrice(id int, price float64) (model.Product, e
 	}
 	return is.repo.UpdatePrice(id, price)
 }
-func (is *InventoryService) ReduceStock(productId int, quantity int) error {
-	product, err := is.repo.GetByID(productId)
+func (s *InventoryService) ReduceStock(ctx context.Context, productId, quantity int) (model.Product, error) {
+	if productId <= 0 || quantity <= 0 {
+		return model.Product{}, ErrInvalidInput
+	}
+	updatedProduct, err := s.repo.ReduceStock(ctx, productId, quantity)
+	if errors.Is(err, sql.ErrNoRows) {
+		return model.Product{}, ErrInsufficientStock
+	}
 	if err != nil {
-		return err
+		return model.Product{}, fmt.Errorf("reduce stock: %w", err)
 	}
-	if product.Quantity < quantity {
-		return errors.New("the product is out of stock")
-	}
-	reducedQuantity := product.Quantity - quantity
-	_, err = is.repo.UpdateQuantity(productId, reducedQuantity)
-	if err != nil {
-		return err
-	}
-	return nil
+	return updatedProduct, nil
 }

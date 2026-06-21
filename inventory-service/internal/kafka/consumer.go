@@ -1,8 +1,11 @@
 package kafka
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"log"
+	"time"
 
 	"github.com/Daty26/order-system/inventory-service/internal/service"
 	"github.com/IBM/sarama"
@@ -30,26 +33,45 @@ func NewKafkaConsumer(broker []string, inventoryService *service.InventoryServic
 	return &KafkaConsumer{Consumer: consumer, service: inventoryService}, nil
 }
 
-func (kc *KafkaConsumer) Consume(topic string) error {
-	consumePartition, err := kc.Consumer.ConsumePartition(topic, 0, sarama.OffsetNewest)
-	if err != nil {
-		return err
+func (kc *KafkaConsumer) Consume(ctx context.Context,topic string) error {
+	partition, err := kc.Consumer.ConsumePartition(topic, 0, sarama.OffsetNewest)
+	if err != nil{
+		return fmt.Errorf("consume partition: %w", err)
 	}
-	defer consumePartition.Close()
-	log.Println("Listening for messages on topic; " + topic)
-	for msg := range consumePartition.Messages() {
-		var event OrderCreated
-		if err := json.Unmarshal(msg.Value, &event); err != nil {
-			log.Println("couldn;t parse the message: " + err.Error())
-			continue
-		}
-		log.Printf("received order_id=%d, with %d item(s) for userID: %d\n", event.OrderID, len(event.Items), event.UserID)
-		for _, items := range event.Items {
-			if err = kc.service.ReduceStock(items.ProductID, items.Quantity); err != nil {
-				log.Printf("error reducing stock for product_id=%d: %v", items.ProductID, err.Error())
-				continue
+	defer partition.Close()
+	log.Printf("Listening for messages on topic %s", topic)
+	for{
+		select{
+		case <- ctx.Done():
+			log.Printf("stopping consumer for topic: %s", topic)
+			return nil
+		case msg, ok := <-partition.Messages():
+			if !ok{
+				return nil
 			}
-			log.Printf("product_id: %d, quantity: %d\n", items.ProductID, items.Quantity)
+			msgCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			err := kc.handleOrderCreated(msgCtx, msg.Value); 
+			cancel()
+			if err != nil{
+				log.Printf("failed to process order.created message: %v", err)
+			}
+		}
+	}
+}
+func (kc * KafkaConsumer) handleOrderCreated(ctx context.Context, value []byte) error{
+	var event OrderCreated
+	if err := json.Unmarshal(value, &event); err != nil{
+		return fmt.Errorf("decode order.created event: %w", err)
+	}
+	log.Printf(
+		"received order_id=%d with %d items for user_id=%d",
+		event.OrderID,
+		len(event.Items),
+		event.UserID,
+	)
+	for _, item := range event.Items{
+		if _, err :=kc.service.ReduceStock(ctx, item.ProductID, item.Quantity); err != nil{
+			return fmt.Errorf("reduce stock for product_id=%d: %w", item.ProductID, err)
 		}
 	}
 	return nil

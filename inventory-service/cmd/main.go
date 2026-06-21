@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/Daty26/order-system/inventory-service/internal/api"
 	"github.com/Daty26/order-system/inventory-service/internal/db"
@@ -18,6 +21,9 @@ import (
 func main() {
 	db.InitDB()
 	defer db.DataDB.Close()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	repo := repository.NewPostgresInventoryRepo(db.DataDB)
 	svc := service.NewInventoryService(repo)
 	handler := api.NewInventoryHandler(svc)
@@ -28,7 +34,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("couldn't start consumer: %s" + err.Error())
 		}
-		if err = consumer.Consume("order.created"); err != nil {
+		if err = consumer.Consume(ctx,"order.created"); err != nil {
 			log.Fatalf("couldn't consume the topic: " + err.Error())
 		}
 	}()

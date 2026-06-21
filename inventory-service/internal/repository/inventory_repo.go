@@ -1,7 +1,10 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
+	"fmt"
+
 	"github.com/Daty26/order-system/inventory-service/internal/model"
 )
 
@@ -11,6 +14,7 @@ type InventoryRepository interface {
 	UpdateQuantity(id int, quanity int) (model.Product, error)
 	GetByID(id int) (model.Product, error)
 	UpdatePrice(id int, price float64) (model.Product, error)
+	ReduceStock(id, quntity int) (model.Product, error)
 }
 
 type PostgresInventoryRepo struct {
@@ -74,4 +78,26 @@ func (pr *PostgresInventoryRepo) UpdatePrice(id int, newPrice float64) (model.Pr
 		return model.Product{}, err
 	}
 	return updatedProduct, nil
+}
+func (r *PostgresInventoryRepo) ReduceStock(ctx context.Context, id, quantity int) (model.Product, error){
+	var product model.Product
+	const query = `
+		UPDATE inventory
+		SET quantity = quantity - $2,
+			updated_at = now()
+		WHERE id = $1 and quantity >= $2
+		RETURNING id,name, quantity, price, created_at, updated_at
+	`
+	err := r.db.QueryRowContext(ctx, query, id, quantity).Scan(
+		&product.ID,
+		&product.Name,
+		&product.Quantity,
+		&product.Price,
+		&product.CreatedAt,
+		&product.UpdatedAt,
+	)
+	if err != nil{
+		return model.Product{}, fmt.Errorf("reduce product stock: %w", err)
+	}
+	return product, nil
 }
