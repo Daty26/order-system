@@ -4,20 +4,23 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"log"
+	"log/slog"
+	"net/http"
+	"strconv"
+
 	"github.com/Daty26/order-system/order-service/internal/model"
 	"github.com/Daty26/order-system/order-service/internal/service"
 	"github.com/go-chi/chi/v5"
-	"log"
-	"net/http"
-	"strconv"
 )
 
 type OrderHandler struct {
 	service *service.OrderService
+	logger  *slog.Logger
 }
 
-func NewOrderHandler(s *service.OrderService) *OrderHandler {
-	return &OrderHandler{service: s}
+func NewOrderHandler(s *service.OrderService, logger *slog.Logger) *OrderHandler {
+	return &OrderHandler{service: s, logger: logger}
 }
 
 // GetOrders godoc
@@ -116,7 +119,7 @@ func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 		ErrorResponse(w, http.StatusBadRequest, "items cannot be empty")
 		return
 	}
-	items := make([]model.OrderItems, 0)
+	items := make([]model.OrderCreatedEventItem, 0)
 	for _, item := range req.Items {
 		if item.ProductId <= 0 {
 			ErrorResponse(w, http.StatusBadRequest, "product_id is required and must be > 0")
@@ -126,16 +129,16 @@ func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 			ErrorResponse(w, http.StatusBadRequest, "quantity can't be less than 0")
 			return
 		}
-		items = append(items, model.OrderItems{
+		items = append(items, model.OrderCreatedEventItem{
 			ProductID: item.ProductId,
 			Quantity:  item.Quantity,
 		})
 	}
 	order := model.Orders{
-		ID:     id,
-		UserID: userId,
-		Status: "UPDATED",
-		Items:  items,
+		OrderID: id,
+		UserID:  userId,
+		Status:  "UPDATED",
+		Items:   items,
 	}
 	updatedOrder, err := h.service.UpdateOrder(order)
 	if err != nil {
@@ -187,50 +190,38 @@ func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	uid, ok := r.Context().Value("user_id").(float64)
 	if !ok {
-		ErrorResponse(w, http.StatusUnauthorized, "missing user id")
+		ErrorResponse(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	userId := int(uid)
-
-	var req struct {
-		Items []struct {
-			ProductId int `json:"product_id"`
-			Quantity  int `json:"quantity"`
-		} `json:"items"`
-	}
+	var req CreatedOrderRequest
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&req); err != nil {
-		ErrorResponse(w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+		ErrorResponse(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	if len(req.Items) == 0 {
-		ErrorResponse(w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest)+": can't create empty order")
-		return
+	input := service.CreatedOrderInput{
+		UserID: int(uid),
+		Items:  make([]service.CreatedOrderItemInput, 0, len(req.Items)),
 	}
-	items := make([]model.OrderItems, 0)
 	for _, item := range req.Items {
-		if item.ProductId <= 0 {
-			ErrorResponse(w, http.StatusBadRequest, "product_id is required and must be > 0")
-			return
-		}
-		if item.Quantity <= 0 {
-			ErrorResponse(w, http.StatusBadRequest, "quantity can't be less than 0")
-			return
-		}
-		items = append(items, model.OrderItems{
-			ProductID: item.ProductId,
+		input.Items = append(input.Items, service.CreatedOrderItemInput{
+			ProductID: item.ProductID,
 			Quantity:  item.Quantity,
 		})
 	}
-	order := model.Orders{
-		UserID: userId,
-		Items:  items,
-	}
-	createdOrder, err := h.service.CreateOrder(order)
+	createdOrder, err := h.service.CreateOrder(r.Context(), input)
 	if err != nil {
-		log.Println("Couldn't create order: " + err.Error())
-		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		switch {
+		case errors.Is(err, service.ErrInvalidOrder):
+			ErrorResponse(w, http.StatusBadRequest, err.Error())
+		case errors.Is(err, service.ErrProductNotFound):
+			ErrorResponse(w, http.StatusNotFound, err.Error())
+		default:
+			//TODO logg the err
+			h.logger.ErrorContext(r.Context(), "failed to create order", err)
+			ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		}
 		return
 	}
 	SuccessResp(w, http.StatusCreated, createdOrder)
