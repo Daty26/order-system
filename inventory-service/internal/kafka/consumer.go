@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -69,6 +70,9 @@ func (kc * KafkaConsumer) handleOrderCreated(ctx context.Context, value []byte) 
 		len(event.Items),
 		event.UserID,
 	)
+	if event.OrderID <= 0 || len(event.Items) == 0{
+		return errors.New("invalid order.created event")
+	}
 	for _, item := range event.Items{
 		if _, err :=kc.service.ReduceStock(ctx, item.ProductID, item.Quantity); err != nil{
 			return fmt.Errorf("reduce stock for product_id=%d: %w", item.ProductID, err)

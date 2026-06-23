@@ -34,7 +34,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("couldn't start consumer: %s" + err.Error())
 		}
-		if err = consumer.Consume(ctx,"order.created"); err != nil {
+		if err = consumer.Consume(ctx, "order.created"); err != nil {
 			log.Fatalf("couldn't consume the topic: " + err.Error())
 		}
 	}()
