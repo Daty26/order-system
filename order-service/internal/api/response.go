@@ -15,6 +15,7 @@ func SuccessResp(w http.ResponseWriter, status int, data interface{}) {
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(ApiResponse{Data: data})
 }
+
 func ErrorResponse(w http.ResponseWriter, status int, error string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
