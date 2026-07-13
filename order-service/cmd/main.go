@@ -2,12 +2,15 @@ package main
 
 import (
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	_ "github.com/Daty26/order-system/order-service/docs"
 	"github.com/Daty26/order-system/order-service/internal/api"
+	"github.com/Daty26/order-system/order-service/internal/client/inventory"
 	"github.com/Daty26/order-system/order-service/internal/db"
 	"github.com/Daty26/order-system/order-service/internal/kafka"
 	"github.com/Daty26/order-system/order-service/internal/middleware"
@@ -27,18 +30,27 @@ import (
 func main() {
 	db.InitDB()
 	defer db.DataB.Close()
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
 	kafkaBrokers := strings.Split(getEnv("KAFKA_BROKERS", "localhost:9092"), ",")
 	prod, err := kafka.NewKafkaProducer(kafkaBrokers)
 	if err != nil {
 		log.Fatalln("failed to create Kafka producer: " + err.Error())
 	}
+
 	defer prod.Close()
+
+	inventoryClient := inventory.NewClient(
+		getEnv("INVENTORY_SERVICE_URL", "http://localhost:8084"),
+		&http.Client{Timeout: 2 * time.Second},
+	)
 
 	repo := repository.NewPostgresRepo(db.DataB)
 
-	svc := service.NewOrderService(repo, prod)
+	svc := service.NewOrderService(repo, prod, inventoryClient)
 
-	handler := api.NewOrderHandler(svc)
+	handler := api.NewOrderHandler(svc, logger)
 
 	r := chi.NewRouter()
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +61,7 @@ func main() {
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.AuthMiddleware)
-		r.Put("/orders/{id}", handler.UpdateOrder)
+		// r.Put("/orders/{id}", handler.UpdateOrder)
 		r.Delete("/orders/{id}", handler.DeleteOrder)
 		r.Post("/orders", handler.CreateOrder)
 		r.Get("/orders", handler.GetOrders)

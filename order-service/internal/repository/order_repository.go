@@ -8,12 +8,11 @@ import (
 	_ "github.com/Daty26/order-system/order-service/internal/db"
 	"github.com/Daty26/order-system/order-service/internal/model"
 	"github.com/lib/pq"
-	//"golang.org/x/tools/go/analysis/passes/deepequalerrors"
 )
 
 type OrderRep interface {
 	Create(ctx context.Context, order model.Orders) (model.Orders, error)
-	GetAll(ctx context.Context, limit, offset *int) ([]model.Orders, error)
+	GetAll(ctx context.Context, limit, offset int) ([]model.Orders, error)
 	GetByID(ctx context.Context, id int) (model.Orders, error)
 	Update(orders model.Orders) (model.Orders, error)
 	Delete(ctx context.Context, id int) error
@@ -113,7 +112,6 @@ func (r *PostgresOrderRepo) GetAll(ctx context.Context, limit, offset int) ([]mo
 	}
 	defer itemrows.Close()
 	for itemrows.Next() {
-		var orderID int
 		var item model.OrderItem
 
 		if err := itemrows.Scan(
@@ -125,14 +123,14 @@ func (r *PostgresOrderRepo) GetAll(ctx context.Context, limit, offset int) ([]mo
 		); err != nil {
 			return []model.Orders{}, fmt.Errorf("scan order item: %w", err)
 		}
-		index, exists := orderIndex[orderID]
+		index, exists := orderIndex[item.OrderID]
 		if !exists {
-			return []model.Orders{}, fmt.Errorf("order item references unexpected order: %d", orderID)
+			return []model.Orders{}, fmt.Errorf("order item references unexpected order: %d", item.OrderID)
 		}
 		orders[index].Items = append(orders[index].Items, item)
 	}
 
-	if err := itemrows.Close(); err != nil {
+	if err := itemrows.Err(); err != nil {
 		return []model.Orders{}, fmt.Errorf("iterate order items: %w", err)
 	}
 	return orders, nil
@@ -192,6 +190,7 @@ func (r *PostgresOrderRepo) GetAllByUserID(ctx context.Context, userId, limit, o
 		if err := itemRows.Scan(
 			&item.ID,
 			&item.OrderID,
+			&item.ProductID,
 			&item.Quantity,
 			&item.UnitPriceCents,
 		); err != nil {
@@ -209,15 +208,15 @@ func (r *PostgresOrderRepo) GetAllByUserID(ctx context.Context, userId, limit, o
 
 	return orders, nil
 }
-func (r *PostgresOrderRepo) GetByID(id int) (model.Orders, error) {
+func (r *PostgresOrderRepo) GetByID(ctx context.Context, id int) (model.Orders, error) {
 	var order model.Orders
-	err := r.db.QueryRow(
+	err := r.db.QueryRowContext(ctx,
 		`select o.id, o.user_id, o.total_amount_cents,  o.status, o.created_at from orders o WHERE o.id = $1`,
 		id).Scan(&order.OrderID, &order.UserID, &order.TotalAmountCents, &order.Status, &order.CreatedAt)
 	if err != nil {
 		return model.Orders{}, err
 	}
-	rows, err := r.db.Query(`select oi.id,  oi.product_id, oi.quantity, oi.unit_price_cents from order_items oi where oi.order_id = $1`, order.OrderID)
+	rows, err := r.db.QueryContext(ctx, `select oi.id,  oi.product_id, oi.quantity, oi.unit_price_cents from order_items oi where oi.order_id = $1`, order.OrderID)
 	if err != nil {
 		return model.Orders{}, err
 	}
@@ -225,7 +224,7 @@ func (r *PostgresOrderRepo) GetByID(id int) (model.Orders, error) {
 	order.Items = []model.OrderItem{}
 	for rows.Next() {
 		var item model.OrderItem
-		err = rows.Scan(&item, &item.ProductID, &item.Quantity, &item.UnitPriceCents)
+		err = rows.Scan(&item.ID, &item.ProductID, &item.Quantity, &item.UnitPriceCents)
 		if err != nil {
 			return model.Orders{}, err
 		}

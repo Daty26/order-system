@@ -45,6 +45,7 @@ func (pr *PostgresInventoryRepo) GetAll() ([]model.Product, error) {
 	}
 	return products, nil
 }
+
 func (pr *PostgresInventoryRepo) GetByID(id int) (model.Product, error) {
 	var product model.Product
 	query := `Select id, name, quantity, price, created_at, updated_at from inventory where id=$1`
@@ -53,6 +54,7 @@ func (pr *PostgresInventoryRepo) GetByID(id int) (model.Product, error) {
 	}
 	return product, nil
 }
+
 func (pr *PostgresInventoryRepo) Insert(product model.Product) (model.Product, error) {
 	var insertedProduct model.Product
 	query := `Insert into inventory (name, quantity, price) VALUES ($1, $2, $3) RETURNING id, name, quantity, price, created_at, updated_at`
@@ -63,6 +65,7 @@ func (pr *PostgresInventoryRepo) Insert(product model.Product) (model.Product, e
 	}
 	return insertedProduct, nil
 }
+
 func (pr *PostgresInventoryRepo) UpdateQuantity(id int, quantity int) (model.Product, error) {
 	var updatedProduct model.Product
 	query := `update inventory set quantity=$1 where id = $2 RETURNING id, name, quantity,price, created_at, updated_at`
@@ -71,6 +74,7 @@ func (pr *PostgresInventoryRepo) UpdateQuantity(id int, quantity int) (model.Pro
 	}
 	return updatedProduct, nil
 }
+
 func (pr *PostgresInventoryRepo) UpdatePrice(id int, newPrice float64) (model.Product, error) {
 	var updatedProduct model.Product
 	query := `update inventory set price=$1 where id = $2 RETURNING id, name, quantity, price, created_at, updated_at`
@@ -79,7 +83,8 @@ func (pr *PostgresInventoryRepo) UpdatePrice(id int, newPrice float64) (model.Pr
 	}
 	return updatedProduct, nil
 }
-func (r *PostgresInventoryRepo) ReduceStock(ctx context.Context, id, quantity int) (model.Product, error){
+
+func (r *PostgresInventoryRepo) ReduceStock(ctx context.Context, id, quantity int) (model.Product, error) {
 	var product model.Product
 	const query = `
 		UPDATE inventory
@@ -96,7 +101,7 @@ func (r *PostgresInventoryRepo) ReduceStock(ctx context.Context, id, quantity in
 		&product.CreatedAt,
 		&product.UpdatedAt,
 	)
-	if err != nil{
+	if err != nil {
 		return model.Product{}, fmt.Errorf("reduce product stock: %w", err)
 	}
 	return product, nil
