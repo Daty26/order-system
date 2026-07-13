@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-
 	_ "github.com/Daty26/order-system/order-service/internal/db"
 	"github.com/Daty26/order-system/order-service/internal/model"
 	"github.com/lib/pq"
@@ -14,7 +13,7 @@ type OrderRep interface {
 	Create(ctx context.Context, order model.Orders) (model.Orders, error)
 	GetAll(ctx context.Context, limit, offset int) ([]model.Orders, error)
 	GetByID(ctx context.Context, id int) (model.Orders, error)
-	Update(orders model.Orders) (model.Orders, error)
+	// Update(ctx context.Context, order model.Orders) (model.Orders, error)
 	Delete(ctx context.Context, id int) error
 	GetAllByUserID(ctx context.Context, userId, limit, offset int) ([]model.Orders, error)
 }
@@ -264,8 +263,8 @@ func (r *PostgresOrderRepo) GetByID(ctx context.Context, id int) (model.Orders, 
 // 	return order, nil
 //
 
-func (r *PostgresOrderRepo) Delete(id int) error {
-	res, err := r.db.Exec(`delete from orders where id = $1`, id)
+func (r *PostgresOrderRepo) Delete(ctx context.Context, id int) error {
+	res, err := r.db.ExecContext(ctx, `delete from orders where id = $1`, id)
 	if err != nil {
 		return err
 	}

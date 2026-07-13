@@ -10,12 +10,12 @@ import (
 )
 
 type OrderService struct {
-	repo      *repository.PostgresOrderRepo
+	repo      repository.OrderRep
 	inventory ProductInventory
 	kafka     *kafka.KafkaProducer
 }
 
-func NewOrderService(repo *repository.PostgresOrderRepo, producer *kafka.KafkaProducer, inventory ProductInventory) *OrderService {
+func NewOrderService(repo repository.OrderRep, producer *kafka.KafkaProducer, inventory ProductInventory) *OrderService {
 	return &OrderService{
 		repo:      repo,
 		kafka:     producer,
@@ -138,21 +138,23 @@ func (s *OrderService) GetOrdersByUserId(ctx context.Context, userId, limit, off
 func (s *OrderService) GetOrderByID(ctx context.Context, id int) (model.Orders, error) {
 	return s.repo.GetByID(ctx, id)
 }
-func (s *OrderService) UpdateOrder(order model.Orders) (model.Orders, error) {
-	for _, item := range order.Items {
-		if item.ProductID <= 0 || item.Quantity <= 0 {
-			return model.Orders{}, errors.New("invalid order data")
-		}
-	}
-	order, err := s.repo.Update(order)
-	if err != nil {
-		return model.Orders{}, err
-	}
-	return order, nil
-}
-func (s *OrderService) DeleteOrder(id int) error {
+
+// func (s *OrderService) UpdateOrder(ctx context.Context, order model.Orders) (model.Orders, error) {
+// 	for _, item := range order.Items {
+// 		if item.ProductID <= 0 || item.Quantity <= 0 {
+// 			return model.Orders{}, errors.New("invalid order data")
+// 		}
+// 	}
+// 	order, err := s.repo.Update(ctx, order)
+// 	if err != nil {
+// 		return model.Orders{}, err
+// 	}
+// 	return order, nil
+// }
+
+func (s *OrderService) DeleteOrder(ctx context.Context, id int) error {
 	if id <= 0 {
 		return errors.New("invalid id")
 	}
-	return s.repo.Delete(id)
+	return s.repo.Delete(ctx, id)
 }

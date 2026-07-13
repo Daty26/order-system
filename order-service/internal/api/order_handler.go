@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -62,6 +63,7 @@ func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 // @Router /orders/{id} [get]
 func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+
 	if err != nil {
 		ErrorResponse(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
 		return
