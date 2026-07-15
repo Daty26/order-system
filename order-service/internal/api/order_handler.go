@@ -31,25 +31,51 @@ func NewOrderHandler(s *service.OrderService, logger *slog.Logger) *OrderHandler
 // @Success 200 {array} model.Order
 // @Router /orders [get]
 func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
-	role := r.Context().Value("role").(string)
-	userId := int(r.Context().Value("user_id").(float64))
-	if role == "ADMIN" {
-		orders, err := h.service.GetOrders()
-		if err != nil {
-			log.Println("couldn't fetch orders: " + err.Error())
-			ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
-			return
-		}
-		SuccessResp(w, http.StatusOK, orders)
+	role, ok := r.Context().Value("role").(string)
+	if !ok {
+		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
 		return
 	}
-	orders, err := h.service.GetOrdersByUserId(userId)
+
+	userIDRaw, ok := r.Context().Value("user_id").(float64)
+	if !ok {
+		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
+		return
+	}
+	userID := int(userIDRaw)
+
+	limit, offset, ok := parsePagination(r)
+	if !ok {
+		ErrorResponse(w, http.StatusBadRequest, "invalid pagination params")
+		return
+	}
+
+	var (
+		orders []model.Orders
+		err    error
+	)
+	if role == "ADMIN" {
+		orders, err = h.service.GetOrders(r.Context(), limit, offset)
+	} else {
+		orders, err = h.service.GetOrdersByUserId(r.Context(), userID, limit, offset)
+	}
+
 	if err != nil {
-		log.Println("couldn't fetch orders of specified user: " + err.Error())
-		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		if errors.Is(err, service.ErrInvalidOrder) {
+			ErrorResponse(w, http.StatusBadRequest, "invalid order request")
+			return
+		}
+		h.logger.ErrorContext(r.Context(), "failed to get orders",
+			"error", err,
+			"user_id", userID,
+			"role", role,
+		)
+
+		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
 	SuccessResp(w, http.StatusOK, orders)
+
 }
 
 // GetOrderByID godoc
