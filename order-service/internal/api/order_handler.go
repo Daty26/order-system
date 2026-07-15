@@ -89,17 +89,41 @@ func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 // @Router /orders/{id} [get]
 func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		ErrorResponse(w, http.StatusBadRequest, "invalid order id")
+		return
+	}
+	role, ok := r.Context().Value("role").(string)
+	if !ok {
+		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
+		return
+	}
+	userIDRaw, ok := r.Context().Value("user_id").(float64)
+	if !ok {
+		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
+		return
+	}
+	userID := int(userIDRaw)
+	order, err := h.service.GetOrderByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			ErrorResponse(w, http.StatusNotFound, "order not found")
+			return
+		}
+		h.logger.ErrorContext(r.Context(), "failed to get order by id",
+			"error", err,
+			"order_id", id,
+		)
 
-	if err != nil {
-		ErrorResponse(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
+		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
-	order, err := h.service.GetOrderByID(id)
-	if err != nil {
-		log.Println("Couldn't find order with specified id: " + err.Error())
-		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+
+	if role != "ADMIN" && order.UserID != userID {
+		ErrorResponse(w, http.StatusForbidden, "you are not allowed to view this order")
 		return
 	}
+
 	SuccessResp(w, http.StatusOK, order)
 }
 
