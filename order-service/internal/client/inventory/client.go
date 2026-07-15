@@ -39,7 +39,7 @@ func (c *Client) GetQuotes(ctx context.Context, ids []int) (map[int]service.Prod
 	if err != nil {
 		return nil, fmt.Errorf("call inventory service: %w", err)
 	}
-	defer req.Body.Close()
+	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("inventory service returned status: %d", resp.StatusCode)

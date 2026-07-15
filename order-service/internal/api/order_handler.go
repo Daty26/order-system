@@ -309,7 +309,10 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, service.ErrProductNotFound):
 			ErrorResponse(w, http.StatusNotFound, err.Error())
 		default:
-			h.logger.ErrorContext(r.Context(), "failed to create order", err)
+			h.logger.ErrorContext(r.Context(), "failed to create order",
+				"error", err,
+				"user_id", int(uid),
+			)
 			ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 		}
 		return

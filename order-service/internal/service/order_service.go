@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/Daty26/order-system/order-service/internal/kafka"
 	"github.com/Daty26/order-system/order-service/internal/model"
