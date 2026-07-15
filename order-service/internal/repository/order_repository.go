@@ -266,11 +266,11 @@ func (r *PostgresOrderRepo) GetByID(ctx context.Context, id int) (model.Orders, 
 func (r *PostgresOrderRepo) Delete(ctx context.Context, id int) error {
 	res, err := r.db.ExecContext(ctx, `delete from orders where id = $1`, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("delete order: %w", err)
 	}
 	rowsAffected, err := res.RowsAffected()
 	if err != nil {
-		return err
+		return fmt.Errorf("get rows affected: %w", err)
 	}
 	if rowsAffected == 0 {
 		return sql.ErrNoRows

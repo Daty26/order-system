@@ -138,68 +138,68 @@ func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 // @Failure 404 {string} string "Order not found"
 // @Failure 500 {string} string "Couldn't update order"
 // @Router /orders/{id} [put]
-func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
-	if r.Context().Value("role") != "ADMIN" {
-		ErrorResponse(w, http.StatusForbidden, "you are not allowed to update orders ")
-		return
-	}
-	uid, ok := r.Context().Value("user_id").(float64)
-	if !ok {
-		ErrorResponse(w, http.StatusUnauthorized, "missing user id")
-		return
-	}
-	userId := int(uid)
-	var req struct {
-		Items []struct {
-			ProductId int `json:"product_id"`
-			Quantity  int `json:"quantity"`
-		} `json:"items"`
-	}
-	id, err := strconv.Atoi(chi.URLParam(r, "id"))
-	if err != nil {
-		ErrorResponse(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
-		return
-	}
-	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
-	err = dec.Decode(&req)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
-		return
-	}
-	if len(req.Items) == 0 {
-		ErrorResponse(w, http.StatusBadRequest, "items cannot be empty")
-		return
-	}
-	items := make([]model.OrderCreatedEventItem, 0)
-	for _, item := range req.Items {
-		if item.ProductId <= 0 {
-			ErrorResponse(w, http.StatusBadRequest, "product_id is required and must be > 0")
-			return
-		}
-		if item.Quantity <= 0 {
-			ErrorResponse(w, http.StatusBadRequest, "quantity can't be less than 0")
-			return
-		}
-		items = append(items, model.OrderCreatedEventItem{
-			ProductID: item.ProductId,
-			Quantity:  item.Quantity,
-		})
-	}
-	order := model.Orders{
-		OrderID: id,
-		UserID:  userId,
-		Status:  "UPDATED",
-		Items:   items,
-	}
-	updatedOrder, err := h.service.UpdateOrder(order)
-	if err != nil {
-		log.Println("Couldn't update order: " + err.Error())
-		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
-		return
-	}
-	SuccessResp(w, http.StatusOK, updatedOrder)
-}
+// func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
+// 	if r.Context().Value("role") != "ADMIN" {
+// 		ErrorResponse(w, http.StatusForbidden, "you are not allowed to update orders ")
+// 		return
+// 	}
+// 	uid, ok := r.Context().Value("user_id").(float64)
+// 	if !ok {
+// 		ErrorResponse(w, http.StatusUnauthorized, "missing user id")
+// 		return
+// 	}
+// 	userId := int(uid)
+// 	var req struct {
+// 		Items []struct {
+// 			ProductId int `json:"product_id"`
+// 			Quantity  int `json:"quantity"`
+// 		} `json:"items"`
+// 	}
+// 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+// 	if err != nil {
+// 		ErrorResponse(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
+// 		return
+// 	}
+// 	dec := json.NewDecoder(r.Body)
+// 	dec.DisallowUnknownFields()
+// 	err = dec.Decode(&req)
+// 	if err != nil {
+// 		ErrorResponse(w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+// 		return
+// 	}
+// 	if len(req.Items) == 0 {
+// 		ErrorResponse(w, http.StatusBadRequest, "items cannot be empty")
+// 		return
+// 	}
+// 	items := make([]model.OrderCreatedEventItem, 0)
+// 	for _, item := range req.Items {
+// 		if item.ProductId <= 0 {
+// 			ErrorResponse(w, http.StatusBadRequest, "product_id is required and must be > 0")
+// 			return
+// 		}
+// 		if item.Quantity <= 0 {
+// 			ErrorResponse(w, http.StatusBadRequest, "quantity can't be less than 0")
+// 			return
+// 		}
+// 		items = append(items, model.OrderCreatedEventItem{
+// 			ProductID: item.ProductId,
+// 			Quantity:  item.Quantity,
+// 		})
+// 	}
+// 	order := model.Orders{
+// 		OrderID: id,
+// 		UserID:  userId,
+// 		Status:  "UPDATED",
+// 		Items:   items,
+// 	}
+// 	updatedOrder, err := h.service.UpdateOrder(order)
+// 	if err != nil {
+// 		log.Println("Couldn't update order: " + err.Error())
+// 		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+// 		return
+// 	}
+// 	SuccessResp(w, http.StatusOK, updatedOrder)
+// }
 
 // DeleteOrder godoc
 // @Summary Delete order
@@ -209,22 +209,61 @@ func (h *OrderHandler) UpdateOrder(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {string} string "Couldn't delete order"
 // @Router /orders/{id} [delete]
 func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
-	if r.Context().Value("role") != "ADMIN" {
-		ErrorResponse(w, http.StatusForbidden, "you are not allowed to delete orders")
-		return
-	}
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
+		ErrorResponse(w, http.StatusBadRequest, "invalid order id")
 		return
 	}
-	err = h.service.DeleteOrder(id)
-	if errors.Is(err, sql.ErrNoRows) {
-		ErrorResponse(w, http.StatusNotFound, "Couldn't find order with such id")
+	role, ok := r.Context().Value("role").(string)
+	if !ok {
+		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
 		return
 	}
+	userIDRaw, ok := r.Context().Value("user_id").(string)
+	if !ok {
+		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
+		return
+	}
+	userID := int(userIDRaw)
+	order, err := h.service.GetOrderByID(r.Context(), id)
 	if err != nil {
-		ErrorResponse(w, http.StatusInternalServerError, "Couldn't delete order")
+		if errors.Is(err, sql.ErrNoRows) {
+			ErrorResponse(w, http.StatusNotFound, "order not found")
+			return
+		} else if errors.Is(err, service.ErrInvalidOrder) {
+			ErrorResponse(w, http.StatusBadRequest, "invalid order id")
+			return
+		}
+		h.logger.ErrorContext(
+			r.Context(),
+			"failed to get order before delete",
+			"error", err,
+			"order_id", id,
+		)
+
+		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
+		return
+	}
+	if role != "ADMIN" && order.UserID != userID {
+		ErrorResponse(w, http.StatusForbidden, "you are not allowed to delete this order")
+		return
+	}
+	err = h.service.DeleteOrder(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			ErrorResponse(w, http.StatusNotFound, "order not found")
+			return
+		} else if errors.Is(err, service.ErrInvalidOrder) {
+			ErrorResponse(w, http.StatusBadRequest, "invalid order request")
+			return
+		}
+
+		h.logger.ErrorContext(
+			r.Context(), "failed to delete order",
+			"error", err,
+			"order_id", id,
+		)
+		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
 	SuccessResp(w, http.StatusOK, nil)

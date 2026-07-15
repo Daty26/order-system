@@ -136,6 +136,9 @@ func (s *OrderService) GetOrdersByUserId(ctx context.Context, userId, limit, off
 }
 
 func (s *OrderService) GetOrderByID(ctx context.Context, id int) (model.Orders, error) {
+	if id <= 0 {
+		return model.Orders{}, ErrInvalidOrder
+	}
 	return s.repo.GetByID(ctx, id)
 }
 
@@ -154,7 +157,7 @@ func (s *OrderService) GetOrderByID(ctx context.Context, id int) (model.Orders, 
 
 func (s *OrderService) DeleteOrder(ctx context.Context, id int) error {
 	if id <= 0 {
-		return errors.New("invalid id")
+		return ErrInvalidOrder
 	}
 	return s.repo.Delete(ctx, id)
 }
