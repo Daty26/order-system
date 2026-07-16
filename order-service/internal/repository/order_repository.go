@@ -16,6 +16,7 @@ type OrderRep interface {
 	// Update(ctx context.Context, order model.Orders) (model.Orders, error)
 	Delete(ctx context.Context, id int) error
 	GetAllByUserID(ctx context.Context, userId, limit, offset int) ([]model.Orders, error)
+	Cancel(ctx context.Context, id int) (model.Orders, int)
 }
 type PostgresOrderRepo struct {
 	db *sql.DB
@@ -276,4 +277,25 @@ func (r *PostgresOrderRepo) Delete(ctx context.Context, id int) error {
 		return sql.ErrNoRows
 	}
 	return nil
+}
+
+func (r *PostgresOrderRepo) Cancel(ctx context.Context, orderID int) (model.Orders, error) {
+	const query = `
+		UPDATE orders
+		SET status = $1
+		WHERE id = $2 AND status = $3
+		RETURNING id, user_id, status, total_amount_cents, created_at
+`
+	var order model.Orders
+	if err := r.db.QueryRowContext(ctx, query, model.OrderCancelled, orderID, model.OrderCreated).Scan(
+		&order.OrderID,
+		&order.UserID,
+		&order.Status,
+		&order.TotalAmountCents,
+		&order.CreatedAt,
+	); err != nil {
+		return model.Orders{}, fmt.Errorf("failed to query row: %w", err)
+	}
+	return order, nil
+
 }
