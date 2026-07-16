@@ -3,9 +3,11 @@ package service
 import (
 	"context"
 	"fmt"
+
 	"github.com/Daty26/order-system/order-service/internal/kafka"
 	"github.com/Daty26/order-system/order-service/internal/model"
 	"github.com/Daty26/order-system/order-service/internal/repository"
+	"golang.org/x/tools/go/analysis/passes/nilfunc"
 )
 
 type OrderService struct {
@@ -57,7 +59,7 @@ func (s *OrderService) CreateOrder(ctx context.Context, input CreatedOrderInput)
 	}
 	order := model.Orders{
 		UserID:           input.UserID,
-		Status:           model.OrderCreated,
+		Status:           model.OrderPending,
 		TotalAmountCents: totalAmountCents,
 		Items:            orderItems,
 	}
@@ -159,4 +161,26 @@ func (s *OrderService) DeleteOrder(ctx context.Context, id int) error {
 		return ErrInvalidOrder
 	}
 	return s.repo.Delete(ctx, id)
+}
+
+func (s *OrderService) CancelOrder(ctx context.Context, role string, orderID, userID int) (model.Orders, error) {
+	if orderID <= 0 || userID <= 0 {
+		return model.Orders{}, ErrInvalidOrder
+	}
+	order, err := s.repo.GetByID(ctx, orderID)
+	if err != nil {
+		return model.Orders{}, fmt.Errorf("get order: %w", err)
+	}
+	if role != "ADMIN" && order.UserID != userID {
+		return model.Orders{}, ErrForbiddenOrder
+	}
+	if order.Status != model.OrderPending {
+		return model.Orders{}, ErrCannotBeCanceled
+	}
+	cancelledOrder, err := s.repo.Cancel(ctx, orderID)
+	if err != nil {
+		return model.Orders{}, fmt.Errorf("cancel order: %w", err)
+	}
+	cancelledOrder.Items = order.Items
+	return cancelledOrder, nil
 }

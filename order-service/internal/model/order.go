@@ -5,7 +5,7 @@ import "time"
 type OrderStatus string
 
 const (
-	OrderCreated    OrderStatus = "PENDING"
+	OrderPending    OrderStatus = "PENDING"
 	OrderUpdated    OrderStatus = "CONFIRMED"
 	OrderProcessing OrderStatus = "PROCESSING"
 	OrderDelivered  OrderStatus = "DELIVERED"

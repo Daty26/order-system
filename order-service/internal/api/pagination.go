@@ -3,8 +3,6 @@ package api
 import (
 	"net/http"
 	"strconv"
-
-	"golang.org/x/tools/go/analysis/passes/nilfunc"
 )
 
 const (

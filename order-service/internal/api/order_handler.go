@@ -1,11 +1,9 @@
 package api
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"log"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -318,4 +316,8 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	SuccessResp(w, http.StatusCreated, ToOrderResponse(createdOrder))
+}
+
+func (h *OrderHandler) CancelOrder(w http.ResponseWriter, r *http.Request){
+
 }
