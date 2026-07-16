@@ -74,8 +74,8 @@ func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
-	SuccessResp(w, http.StatusOK, orders)
-
+	resp := ToOrderResponses(orders)
+	SuccessResp(w, http.StatusOK, resp)
 }
 
 // GetOrderByID godoc
@@ -123,8 +123,8 @@ func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 		ErrorResponse(w, http.StatusForbidden, "you are not allowed to view this order")
 		return
 	}
-
-	SuccessResp(w, http.StatusOK, order)
+	resp := ToOrderResponse(order)
+	SuccessResp(w, http.StatusOK, resp)
 }
 
 // UpdateOrder godoc
@@ -219,7 +219,7 @@ func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
 		return
 	}
-	userIDRaw, ok := r.Context().Value("user_id").(string)
+	userIDRaw, ok := r.Context().Value("user_id").(float64)
 	if !ok {
 		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
 		return
@@ -317,5 +317,5 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	SuccessResp(w, http.StatusCreated, createdOrder)
+	SuccessResp(w, http.StatusCreated, ToOrderResponse(createdOrder))
 }
