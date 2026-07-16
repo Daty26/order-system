@@ -68,7 +68,7 @@ func main() {
 		r.Get("/orders/{id}", handler.GetOrderByID)
 
 		// change order status
-		r.Patch("/orders/{id}/cancel", handler)
+		r.Patch("/orders/{id}/cancel", handler.CancelOrder)
 	})
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)

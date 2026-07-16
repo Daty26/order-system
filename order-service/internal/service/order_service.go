@@ -7,7 +7,6 @@ import (
 	"github.com/Daty26/order-system/order-service/internal/kafka"
 	"github.com/Daty26/order-system/order-service/internal/model"
 	"github.com/Daty26/order-system/order-service/internal/repository"
-	"golang.org/x/tools/go/analysis/passes/nilfunc"
 )
 
 type OrderService struct {

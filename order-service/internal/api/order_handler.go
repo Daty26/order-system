@@ -318,6 +318,45 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	SuccessResp(w, http.StatusCreated, ToOrderResponse(createdOrder))
 }
 
-func (h *OrderHandler) CancelOrder(w http.ResponseWriter, r *http.Request){
-
+func (h *OrderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
+	orderID, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil || orderID <= 0 {
+		ErrorResponse(w, http.StatusBadRequest, "invalid order id")
+		return
+	}
+	// TODO create Actor struct that contains role and userID
+	role, ok := r.Context().Value("role").(string)
+	if !ok {
+		ErrorResponse(w, http.StatusForbidden, "unathorized")
+		return
+	}
+	userIDRaw, ok := r.Context().Value("user_id").(float64)
+	if !ok {
+		ErrorResponse(w, http.StatusForbidden, "unathorized")
+		return
+	}
+	userID := int(userIDRaw)
+	order, err := h.service.CancelOrder(r.Context(), role, orderID, userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			ErrorResponse(w, http.StatusNotFound, "order not found")
+		case errors.Is(err, service.ErrInvalidOrder):
+			ErrorResponse(w, http.StatusBadRequest, "invalid order")
+		case errors.Is(err, service.ErrForbiddenOrder):
+			ErrorResponse(w, http.StatusForbidden, "you are not allowed to cancel this order")
+		case errors.Is(err, service.ErrCannotBeCanceled):
+			ErrorResponse(w, http.StatusConflict, "order cannot be cancelled")
+		default:
+			h.logger.ErrorContext(
+				r.Context(), "failed to cancel the order",
+				"error", err,
+				"order_id", orderID,
+				"user_id", userID,
+			)
+			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
+		}
+		return
+	}
+	SuccessResp(w, http.StatusOK, ToOrderResponse(order))
 }
