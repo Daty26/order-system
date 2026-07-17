@@ -23,8 +23,7 @@ func NewOrderService(repo repository.OrderRep, producer *kafka.KafkaProducer, in
 	}
 }
 
-func (s *OrderService) CreateOrder(ctx context.Context, input CreatedOrderInput) (model.Orders, error) {
-
+func (s *OrderService) CreateOrder(ctx context.Context, actor Actor, input CreatedOrderInput) (model.Orders, error) {
 	if input.UserID <= 0 || len(input.Items) == 0 || len(input.Items) > 100 {
 		return model.Orders{}, ErrInvalidOrder
 	}
@@ -67,6 +66,9 @@ func (s *OrderService) CreateOrder(ctx context.Context, input CreatedOrderInput)
 	if err != nil {
 		return model.Orders{}, fmt.Errorf("create order: %w", err)
 	}
+	if !actor.IsAdmin() && actor.UserID != createdOrder.UserID {
+		return model.Orders{}, ErrForbiddenOrder
+	}
 	return createdOrder, nil
 	// fmt.Println("created order:" + createdOrder)
 	// items := make([]map[string]interface{}, 0)
@@ -103,43 +105,28 @@ func (s *OrderService) CreateOrder(ctx context.Context, input CreatedOrderInput)
 }
 
 func (s *OrderService) GetOrders(ctx context.Context, limit, offset int) ([]model.Orders, error) {
-	if limit <= 0 {
-		limit = 20
-	}
-
-	if limit > 100 {
-		limit = 100
-	}
-
-	if offset < 0 {
-		return nil, ErrInvalidOrder
-	}
 	return s.repo.GetAll(ctx, limit, offset)
 }
 
-func (s *OrderService) GetOrdersByUserId(ctx context.Context, userId, limit, offset int) ([]model.Orders, error) {
-	if limit <= 0 {
-		limit = 20
+func (s *OrderService) GetOrdersByUserId(ctx context.Context, userID, limit, offset int) ([]model.Orders, error) {
+	if userID <= 0 {
+		return []model.Orders{}, ErrInvalidOrder
 	}
-
-	if limit > 100 {
-		limit = 100
-	}
-
-	if offset < 0 {
-		return nil, ErrInvalidOrder
-	}
-	if userId <= 0 {
-		return nil, ErrInvalidOrder
-	}
-	return s.repo.GetAllByUserID(ctx, userId, limit, offset)
+	return s.repo.GetAllByUserID(ctx, userID, limit, offset)
 }
 
-func (s *OrderService) GetOrderByID(ctx context.Context, id int) (model.Orders, error) {
-	if id <= 0 {
+func (s *OrderService) GetOrderByID(ctx context.Context, actor Actor, id int) (model.Orders, error) {
+	if id <= 0 || actor.UserID <= 0 {
 		return model.Orders{}, ErrInvalidOrder
 	}
-	return s.repo.GetByID(ctx, id)
+	order, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return model.Orders{}, fmt.Errorf("get order by id: %w", err)
+	}
+	if !actor.IsAdmin() && order.UserID != actor.UserID {
+		return model.Orders{}, ErrForbiddenOrder
+	}
+	return order, nil
 }
 
 // func (s *OrderService) UpdateOrder(ctx context.Context, order model.Orders) (model.Orders, error) {
@@ -155,22 +142,29 @@ func (s *OrderService) GetOrderByID(ctx context.Context, id int) (model.Orders, 
 // 	return order, nil
 // }
 
-func (s *OrderService) DeleteOrder(ctx context.Context, id int) error {
-	if id <= 0 {
+func (s *OrderService) DeleteOrder(ctx context.Context, actor Actor, id int) error {
+	if id <= 0 || actor.UserID <= 0 {
 		return ErrInvalidOrder
+	}
+	order, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("get order before delete: %w", err)
+	}
+	if !actor.IsAdmin() && order.UserID != actor.UserID {
+		return ErrForbiddenOrder
 	}
 	return s.repo.Delete(ctx, id)
 }
 
-func (s *OrderService) CancelOrder(ctx context.Context, role string, orderID, userID int) (model.Orders, error) {
-	if orderID <= 0 || userID <= 0 {
+func (s *OrderService) CancelOrder(ctx context.Context, actor Actor, orderID int) (model.Orders, error) {
+	if orderID <= 0 || actor.UserID <= 0 {
 		return model.Orders{}, ErrInvalidOrder
 	}
 	order, err := s.repo.GetByID(ctx, orderID)
 	if err != nil {
 		return model.Orders{}, fmt.Errorf("get order: %w", err)
 	}
-	if role != "ADMIN" && order.UserID != userID {
+	if !actor.IsAdmin() && order.UserID != actor.UserID {
 		return model.Orders{}, ErrForbiddenOrder
 	}
 	if order.Status != model.OrderPending {
