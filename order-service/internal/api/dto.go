@@ -26,7 +26,7 @@ func ToOrderResponse(order model.Orders) OrderResponse {
 	items := make([]OrderItemResponse, 0, len(order.Items))
 	for _, item := range order.Items {
 		items = append(items, OrderItemResponse{
-			ProductID:      item.OrderID,
+			ProductID:      item.ProductID,
 			Quantity:       item.Quantity,
 			UnitPriceCents: item.UnitPriceCents,
 		})

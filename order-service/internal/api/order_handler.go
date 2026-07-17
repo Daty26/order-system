@@ -40,15 +40,7 @@ func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var (
-		orders []model.Orders
-		err    error
-	)
-	if actor.Role == "ADMIN" {
-		orders, err = h.service.GetOrders(r.Context(), limit, offset)
-	} else {
-		orders, err = h.service.GetOrdersByUserId(r.Context(), actor.UserID, limit, offset)
-	}
+	orders, err := h.service.GetOrders(r.Context(), actor, limit, offset)
 
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidOrder) {
@@ -85,7 +77,7 @@ func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 	}
 	actor, ok := actorFromContext(r)
 	if !ok {
-		ErrorResponse(w, http.StatusForbidden, "unathorized")
+		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
 		return
 	}
 
@@ -200,7 +192,7 @@ func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	actor, ok := actorFromContext(r)
 	if !ok {
-		ErrorResponse(w, http.StatusForbidden, "unathorized")
+		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
 		return
 	}
 
@@ -212,7 +204,7 @@ func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, service.ErrInvalidOrder):
 			ErrorResponse(w, http.StatusBadRequest, "invalid order request")
 		case errors.Is(err, service.ErrForbiddenOrder):
-			ErrorResponse(w, http.StatusForbidden, "you are not allowed to delete this order")
+			ErrorResponse(w, http.StatusForbidden, "you are not allowed to delete order")
 		default:
 
 			h.logger.ErrorContext(
@@ -239,7 +231,7 @@ func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	actor, ok := actorFromContext(r)
 	if !ok {
-		ErrorResponse(w, http.StatusForbidden, "unathorized")
+		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
 		return
 	}
 	var req CreatedOrderRequest
@@ -284,10 +276,9 @@ func (h *OrderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
 		ErrorResponse(w, http.StatusBadRequest, "invalid order id")
 		return
 	}
-	// TODO create Actor struct that contains role and userID
 	actor, ok := actorFromContext(r)
 	if !ok {
-		ErrorResponse(w, http.StatusForbidden, "unathorized")
+		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
 		return
 	}
 	order, err := h.service.CancelOrder(r.Context(), actor, orderID)
@@ -299,7 +290,7 @@ func (h *OrderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
 			ErrorResponse(w, http.StatusBadRequest, "invalid order")
 		case errors.Is(err, service.ErrForbiddenOrder):
 			ErrorResponse(w, http.StatusForbidden, "you are not allowed to cancel this order")
-		case errors.Is(err, service.ErrCannotBeCanceled):
+		case errors.Is(err, service.ErrOrderCannotBeCanceled):
 			ErrorResponse(w, http.StatusConflict, "order cannot be cancelled")
 		default:
 			h.logger.ErrorContext(

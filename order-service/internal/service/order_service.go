@@ -104,7 +104,10 @@ func (s *OrderService) CreateOrder(ctx context.Context, actor Actor, input Creat
 
 }
 
-func (s *OrderService) GetOrders(ctx context.Context, limit, offset int) ([]model.Orders, error) {
+func (s *OrderService) GetOrders(ctx context.Context, actor Actor, limit, offset int) ([]model.Orders, error) {
+	if !actor.IsAdmin() {
+		return s.repo.GetAllByUserID(ctx, actor.UserID, limit, offset)
+	}
 	return s.repo.GetAll(ctx, limit, offset)
 }
 
@@ -143,15 +146,15 @@ func (s *OrderService) GetOrderByID(ctx context.Context, actor Actor, id int) (m
 // }
 
 func (s *OrderService) DeleteOrder(ctx context.Context, actor Actor, id int) error {
+	if !actor.IsAdmin() {
+		return ErrForbiddenOrder
+	}
 	if id <= 0 || actor.UserID <= 0 {
 		return ErrInvalidOrder
 	}
-	order, err := s.repo.GetByID(ctx, id)
+	_, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("get order before delete: %w", err)
-	}
-	if !actor.IsAdmin() && order.UserID != actor.UserID {
-		return ErrForbiddenOrder
 	}
 	return s.repo.Delete(ctx, id)
 }
@@ -168,7 +171,7 @@ func (s *OrderService) CancelOrder(ctx context.Context, actor Actor, orderID int
 		return model.Orders{}, ErrForbiddenOrder
 	}
 	if order.Status != model.OrderPending {
-		return model.Orders{}, ErrCannotBeCanceled
+		return model.Orders{}, ErrOrderCannotBeCanceled
 	}
 	cancelledOrder, err := s.repo.Cancel(ctx, orderID)
 	if err != nil {
