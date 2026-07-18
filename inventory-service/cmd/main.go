@@ -32,10 +32,10 @@ func main() {
 	go func() {
 		consumer, err := kafka.NewKafkaConsumer(kafkaBrokers, svc)
 		if err != nil {
-			log.Fatalf("couldn't start consumer: %s" + err.Error())
+			log.Fatalf("couldn't start consumer: %v", err)
 		}
 		if err = consumer.Consume(ctx, "order.created"); err != nil {
-			log.Fatalf("couldn't consume the topic: " + err.Error())
+			log.Fatalf("couldn't consume the topic: %v", err)
 		}
 	}()
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +53,7 @@ func main() {
 	r.Get("/products", handler.GetAllProducts)
 	err := http.ListenAndServe(":8084", r)
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatalf("failed to start an http server: %v", err)
 		return
 	}
 }
