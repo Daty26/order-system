@@ -17,8 +17,14 @@ type InventoryHandler struct {
 func NewInventoryHandler(serv *service.InventoryService) *InventoryHandler {
 	return &InventoryHandler{serv: serv}
 }
+
 func (ih *InventoryHandler) GetAllProducts(w http.ResponseWriter, r *http.Request) {
-	products, err := ih.serv.GetAll()
+	limit, offset, ok := parsePagination(r)
+	if !ok {
+		ErrorResponse(w, http.StatusBadRequest, "invalid pagination params")
+		return
+	}
+	products, err := ih.serv.GetAll(r.Context(), limit, offset)
 	if err != nil {
 		log.Println(err.Error())
 		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
@@ -26,28 +32,25 @@ func (ih *InventoryHandler) GetAllProducts(w http.ResponseWriter, r *http.Reques
 	}
 	SuccessResponse(w, http.StatusOK, products)
 }
+
 func (ih *InventoryHandler) InsertProduct(w http.ResponseWriter, r *http.Request) {
 	if r.Context().Value("role") != "ADMIN" {
 		ErrorResponse(w, http.StatusForbidden, "you are not allowed to add products")
 		return
 	}
-	var req struct {
-		Name     string  `json:"name"`
-		Quantity int     `json:"quantity"`
-		Price    float64 `json:"price"`
-	}
+	var req InsertProductRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		log.Printf("failed to decode request: %v", err)
 		ErrorResponse(w, http.StatusBadRequest, "Incorrect req body")
 		return
 	}
-	product := model.Product{
-		Name:     req.Name,
-		Price:    req.Price,
-		Quantity: req.Quantity,
+	insertInput := service.InsertProductInput{
+		Name:       req.Name,
+		Quantity:   req.Quantity,
+		PriceCents: req.PriceCents,
 	}
-	productCreated, err := ih.serv.Insert(product)
+	productCreated, err := ih.serv.InsertProduct(r.Context(), insertInput)
 	if err != nil {
 		log.Printf("failed to insert product: %v", err)
 		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
@@ -55,6 +58,7 @@ func (ih *InventoryHandler) InsertProduct(w http.ResponseWriter, r *http.Request
 	}
 	SuccessResponse(w, http.StatusCreated, productCreated)
 }
+
 func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
@@ -81,6 +85,7 @@ func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Reques
 	}
 	SuccessResponse(w, http.StatusOK, quantity)
 }
+
 func (ih *InventoryHandler) UpdatePrice(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {

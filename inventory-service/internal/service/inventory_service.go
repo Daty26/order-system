@@ -18,33 +18,40 @@ func NewInventoryService(inventoryRepo *repository.PostgresInventoryRepo) *Inven
 	return &InventoryService{repo: inventoryRepo}
 }
 
-func (is *InventoryService) GetAll() ([]model.Product, error) {
-	return is.repo.GetAll()
+func (is *InventoryService) GetAll(ctx context.Context, limit, offset int) ([]model.Product, error) {
+	return is.repo.GetAll(ctx, limit, offset)
 }
-func (is *InventoryService) Insert(product model.Product) (model.Product, error) {
-	if product.Quantity < 0 || product.Price < 0 {
-		return model.Product{}, ErrInvalidInput
-	}
-	if len(product.Name) == 0 {
-		return model.Product{}, errors.New("name can't be empty")
-	}
-	return is.repo.Insert(product)
-}
-func (is *InventoryService) UpdateQuantity(id int, quantity int) (model.Product, error) {
+
+func (is *InventoryService) UpdateQuantity(ctx context.Context, id int, quantity int) (model.Product, error) {
 	if quantity < 0 {
 		return model.Product{}, ErrInvalidInput
 	}
-	return is.repo.UpdateQuantity(id, quantity)
+	return is.repo.UpdateQuantity(ctx, id, quantity)
 }
-func (is *InventoryService) UpdatePrice(id int, price float64) (model.Product, error) {
+func (s *InventoryService) InsertProduct(ctx context.Context, input InsertProductInput) (model.Product, error) {
+	if input.Name == "" {
+		return model.Product{}, ErrInvalidInput
+	}
+	if input.Quantity < 0 || input.PriceCents < 0 {
+		return model.Product{}, ErrInvalidInput
+	}
+	params := repository.InsertProductParams{
+		Name:       input.Name,
+		Quantity:   input.Quantity,
+		PriceCents: input.PriceCents,
+	}
+	return s.repo.Insert(ctx, params)
+}
+func (is *InventoryService) UpdatePrice(ctx context.Context, id int, price int64) (model.Product, error) {
 	if id < 0 {
-		return model.Product{}, errors.New("incorrect id")
+		return model.Product{}, ErrInvalidInput
 	}
-	if price < 0.0 {
-		return model.Product{}, errors.New("incorrect price")
+	if price < 0 {
+		return model.Product{}, ErrInvalidInput
 	}
-	return is.repo.UpdatePrice(id, price)
+	return is.repo.UpdatePriceCents(ctx, id, price)
 }
+
 func (s *InventoryService) ReduceStock(ctx context.Context, productId, quantity int) (model.Product, error) {
 	if productId <= 0 || quantity <= 0 {
 		return model.Product{}, ErrInvalidInput

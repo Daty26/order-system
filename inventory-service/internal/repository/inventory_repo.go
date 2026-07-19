@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Daty26/order-system/inventory-service/internal/model"
+	"github.com/Daty26/order-system/inventory-service/internal/service"
 )
 
 type InventoryRepository interface {
@@ -60,10 +61,10 @@ func (pr *PostgresInventoryRepo) GetByID(ctx context.Context, id int) (model.Pro
 	return product, nil
 }
 
-func (pr *PostgresInventoryRepo) Insert(ctx context.Context, product model.Product) (model.Product, error) {
+func (pr *PostgresInventoryRepo) Insert(ctx context.Context, input service.InsertProductInput) (model.Product, error) {
 	var insertedProduct model.Product
 	query := `Insert into inventory (name, quantity, price_cents) VALUES ($1, $2, $3) RETURNING id, name, quantity, price_cents, created_at, updated_at`
-	err := pr.db.QueryRowContext(ctx, query, product.Name, product.Quantity, product.PriceCents).
+	err := pr.db.QueryRowContext(ctx, query, input.Name, input.Quantity, input.PriceCents).
 		Scan(&insertedProduct.ID, &insertedProduct.Name, &insertedProduct.Quantity, &insertedProduct.PriceCents, &insertedProduct.CreatedAt, &insertedProduct.UpdatedAt)
 	if err != nil {
 		return model.Product{}, err
