@@ -9,10 +9,10 @@ import (
 )
 
 type InventoryRepository interface {
-	GetAll() ([]model.Product, error)
+	GetAll(ctx context.Context, limit, offset int) ([]model.Product, error)
 	Insert(product model.Product) (model.Product, error)
 	UpdateQuantity(id int, quanity int) (model.Product, error)
-	GetByID(id int) (model.Product, error)
+	GetByID(ctx context.Context, id int) (model.Product, error)
 	UpdatePrice(id int, price float64) (model.Product, error)
 	ReduceStock(id, quntity int) (model.Product, error)
 }
@@ -25,9 +25,14 @@ func NewPostgresInventoryRepo(db *sql.DB) *PostgresInventoryRepo {
 	return &PostgresInventoryRepo{db: db}
 }
 
-func (pr *PostgresInventoryRepo) GetAll() ([]model.Product, error) {
-	query := `select id, name, quantity, price, created_at, updated_at from inventory`
-	rows, err := pr.db.Query(query)
+func (pr *PostgresInventoryRepo) GetAll(ctx context.Context, limit, offset int) ([]model.Product, error) {
+	query := `
+		select id, name, quantity, price_cents, created_at, updated_at
+		from inventory
+		ORDER BY id DESC
+		LIMIT $1 OFFSET $2
+`
+	rows, err := pr.db.QueryContext(ctx, query, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +40,7 @@ func (pr *PostgresInventoryRepo) GetAll() ([]model.Product, error) {
 	var products []model.Product
 	for rows.Next() {
 		var product model.Product
-		if err = rows.Scan(&product.ID, &product.Name, &product.Quantity, &product.Price, &product.CreatedAt, &product.UpdatedAt); err != nil {
+		if err = rows.Scan(&product.ID, &product.Name, &product.Quantity, &product.PriceCents, &product.CreatedAt, &product.UpdatedAt); err != nil {
 			return []model.Product{}, err
 		}
 		products = append(products, product)
@@ -46,38 +51,38 @@ func (pr *PostgresInventoryRepo) GetAll() ([]model.Product, error) {
 	return products, nil
 }
 
-func (pr *PostgresInventoryRepo) GetByID(id int) (model.Product, error) {
+func (pr *PostgresInventoryRepo) GetByID(ctx context.Context, id int) (model.Product, error) {
 	var product model.Product
-	query := `Select id, name, quantity, price, created_at, updated_at from inventory where id=$1`
-	if err := pr.db.QueryRow(query, id).Scan(&product.ID, &product.Name, &product.Quantity, &product.Price, &product.CreatedAt, &product.UpdatedAt); err != nil {
+	query := `Select id, name, quantity, price_cents, created_at, updated_at from inventory where id=$1`
+	if err := pr.db.QueryRowContext(ctx, query, id).Scan(&product.ID, &product.Name, &product.Quantity, &product.PriceCents, &product.CreatedAt, &product.UpdatedAt); err != nil {
 		return model.Product{}, err
 	}
 	return product, nil
 }
 
-func (pr *PostgresInventoryRepo) Insert(product model.Product) (model.Product, error) {
+func (pr *PostgresInventoryRepo) Insert(ctx context.Context, product model.Product) (model.Product, error) {
 	var insertedProduct model.Product
-	query := `Insert into inventory (name, quantity, price) VALUES ($1, $2, $3) RETURNING id, name, quantity, price, created_at, updated_at`
-	err := pr.db.QueryRow(query, product.Name, product.Quantity, product.Price).
-		Scan(&insertedProduct.ID, &insertedProduct.Name, &insertedProduct.Quantity, &insertedProduct.Price, &insertedProduct.CreatedAt, &insertedProduct.UpdatedAt)
+	query := `Insert into inventory (name, quantity, price_cents) VALUES ($1, $2, $3) RETURNING id, name, quantity, price_cents, created_at, updated_at`
+	err := pr.db.QueryRowContext(ctx, query, product.Name, product.Quantity, product.PriceCents).
+		Scan(&insertedProduct.ID, &insertedProduct.Name, &insertedProduct.Quantity, &insertedProduct.PriceCents, &insertedProduct.CreatedAt, &insertedProduct.UpdatedAt)
 	if err != nil {
 		return model.Product{}, err
 	}
 	return insertedProduct, nil
 }
 
-func (pr *PostgresInventoryRepo) UpdateQuantity(id int, quantity int) (model.Product, error) {
+func (pr *PostgresInventoryRepo) UpdateQuantity(ctx context.Context, id int, quantity int) (model.Product, error) {
 	var updatedProduct model.Product
-	query := `update inventory set quantity=$1 where id = $2 RETURNING id, name, quantity,price, created_at, updated_at`
-	if err := pr.db.QueryRow(query, quantity, id).Scan(&updatedProduct.ID, &updatedProduct.Name, &updatedProduct.Quantity, &updatedProduct.Price, &updatedProduct.CreatedAt, &updatedProduct.UpdatedAt); err != nil {
+	query := `update inventory set quantity=$1 where id = $2 RETURNING id, name, quantity, price_cents, created_at, updated_at`
+	if err := pr.db.QueryRowContext(ctx, query, quantity, id).Scan(&updatedProduct.ID, &updatedProduct.Name, &updatedProduct.Quantity, &updatedProduct.PriceCents, &updatedProduct.CreatedAt, &updatedProduct.UpdatedAt); err != nil {
 		return updatedProduct, err
 	}
 	return updatedProduct, nil
 }
 
-func (pr *PostgresInventoryRepo) UpdatePrice(id int, newPrice float64) (model.Product, error) {
+func (pr *PostgresInventoryRepo) UpdatePrice(ctx context.Context, id int, newPrice float64) (model.Product, error) {
 	var updatedProduct model.Product
-	query := `update inventory set price=$1 where id = $2 RETURNING id, name, quantity, price, created_at, updated_at`
+	query := `update inventory set price_cents=$1 where id = $2 RETURNING id, name, quantity, price, created_at, updated_at`
 	if err := pr.db.QueryRow(query, newPrice, id).Scan(&updatedProduct.ID, &updatedProduct.Name, &updatedProduct.Quantity, &updatedProduct.Price, &updatedProduct.CreatedAt, &updatedProduct.UpdatedAt); err != nil {
 		return model.Product{}, err
 	}
