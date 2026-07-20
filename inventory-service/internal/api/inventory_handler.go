@@ -2,11 +2,13 @@ package api
 
 import (
 	"encoding/json"
-	"github.com/Daty26/order-system/inventory-service/internal/service"
-	"github.com/go-chi/chi/v5"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
+
+	"github.com/Daty26/order-system/inventory-service/internal/service"
+	"github.com/go-chi/chi/v5"
 )
 
 type InventoryHandler struct {
@@ -40,7 +42,6 @@ func (ih *InventoryHandler) InsertProduct(w http.ResponseWriter, r *http.Request
 	var req InsertProductRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		log.Printf("failed to decode request: %v", err)
 		ErrorResponse(w, http.StatusBadRequest, "Incorrect req body")
 		return
 	}
@@ -51,6 +52,10 @@ func (ih *InventoryHandler) InsertProduct(w http.ResponseWriter, r *http.Request
 	}
 	productCreated, err := ih.serv.InsertProduct(r.Context(), insertInput)
 	if err != nil {
+		if errors.Is(err, service.ErrInvalidInput) {
+			ErrorResponse(w, http.StatusBadRequest, "invalid input")
+			return
+		}
 		log.Printf("failed to insert product: %v", err)
 		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return
@@ -61,7 +66,7 @@ func (ih *InventoryHandler) InsertProduct(w http.ResponseWriter, r *http.Request
 func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
+		ErrorResponse(w, http.StatusBadRequest, "invalid id param")
 		return
 	}
 	if r.Context().Value("role") != "ADMIN" {
@@ -82,6 +87,10 @@ func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Reques
 	}
 	productModel, err := ih.serv.UpdateQuantity(r.Context(), input)
 	if err != nil {
+		if errors.Is(err, service.ErrInvalidInput) {
+			ErrorResponse(w, http.StatusBadRequest, "invalid input")
+			return
+		}
 		log.Printf("failed to update quantity: %s", err.Error())
 		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return
@@ -92,7 +101,7 @@ func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Reques
 func (ih *InventoryHandler) UpdatePrice(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
+		ErrorResponse(w, http.StatusBadRequest, "invalid id param")
 		return
 	}
 	if r.Context().Value("role") != "ADMIN" {
@@ -113,6 +122,10 @@ func (ih *InventoryHandler) UpdatePrice(w http.ResponseWriter, r *http.Request) 
 	}
 	priceModel, err := ih.serv.UpdatePrice(r.Context(), input)
 	if err != nil {
+		if errors.Is(err, service.ErrInvalidInput) {
+			ErrorResponse(w, http.StatusBadRequest, "invalid input")
+			return
+		}
 		log.Printf("failed to update price: %s", err.Error())
 		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return

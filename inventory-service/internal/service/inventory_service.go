@@ -11,7 +11,7 @@ import (
 )
 
 type InventoryService struct {
-	repo *repository.PostgresInventoryRepo
+	repo repository.InventoryRepository
 }
 
 func NewInventoryService(inventoryRepo *repository.PostgresInventoryRepo) *InventoryService {
@@ -36,6 +36,7 @@ func (is *InventoryService) UpdateQuantity(ctx context.Context, input UpdateQuan
 }
 
 func (s *InventoryService) InsertProduct(ctx context.Context, input InsertProductInput) (model.Product, error) {
+
 	if input.Name == "" {
 		return model.Product{}, ErrInvalidInput
 	}
