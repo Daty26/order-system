@@ -26,11 +26,11 @@ func (ih *InventoryHandler) GetAllProducts(w http.ResponseWriter, r *http.Reques
 	}
 	products, err := ih.serv.GetAll(r.Context(), limit, offset)
 	if err != nil {
-		log.Println(err.Error())
-		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		log.Printf("failed to get products: %v", err)
+		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
-	SuccessResponse(w, http.StatusOK, products)
+	SuccessResponse(w, http.StatusOK, ToProductResponses(products))
 }
 
 func (ih *InventoryHandler) InsertProduct(w http.ResponseWriter, r *http.Request) {
@@ -53,10 +53,10 @@ func (ih *InventoryHandler) InsertProduct(w http.ResponseWriter, r *http.Request
 	productCreated, err := ih.serv.InsertProduct(r.Context(), insertInput)
 	if err != nil {
 		log.Printf("failed to insert product: %v", err)
-		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
-	SuccessResponse(w, http.StatusCreated, productCreated)
+	SuccessResponse(w, http.StatusCreated, ToProductResponse(productCreated))
 }
 
 func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Request) {
@@ -77,13 +77,17 @@ func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Reques
 		ErrorResponse(w, http.StatusBadRequest, "invalid req body")
 		return
 	}
-	quantity, err := ih.serv.UpdateQuantity(id, req.Quantity)
+	input := service.UpdateQuantityInput{
+		ID:       id,
+		Quantity: req.Quantity,
+	}
+	productModel, err := ih.serv.UpdateQuantity(r.Context(), input)
 	if err != nil {
-		log.Printf("Couldn't update quantity: %s", err.Error())
-		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		log.Printf("failed to update quantity: %s", err.Error())
+		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
-	SuccessResponse(w, http.StatusOK, quantity)
+	SuccessResponse(w, http.StatusOK, ToProductResponse(productModel))
 }
 
 func (ih *InventoryHandler) UpdatePrice(w http.ResponseWriter, r *http.Request) {
@@ -97,18 +101,22 @@ func (ih *InventoryHandler) UpdatePrice(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	var req struct {
-		Price float64 `json:"price"`
+		PriceCents int64 `json:"price_cents"`
 	}
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, "Invalid req body")
 		return
 	}
-	price, err := ih.serv.UpdatePrice(id, req.Price)
+	input := service.UpdateProductInput{
+		ID:         id,
+		PriceCents: req.PriceCents,
+	}
+	priceModel, err := ih.serv.UpdatePrice(r.Context(), input)
 	if err != nil {
-		log.Printf("Couldn't update price: %s", err.Error())
-		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		log.Printf("failed to update price: %s", err.Error())
+		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
-	SuccessResponse(w, http.StatusOK, price)
+	SuccessResponse(w, http.StatusOK, ToProductResponse(priceModel))
 }

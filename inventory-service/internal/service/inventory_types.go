@@ -5,3 +5,11 @@ type InsertProductInput struct {
 	Quantity   int
 	PriceCents int64
 }
+type UpdateProductInput struct {
+	ID         int
+	PriceCents int64
+}
+type UpdateQuantityInput struct {
+	ID       int
+	Quantity int
+}
