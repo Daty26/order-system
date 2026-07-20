@@ -17,3 +17,6 @@ type ReduceStockParams struct {
 	ProductID int
 	Quantity  int
 }
+type GetQuotesParams struct {
+	IDs []int
+}

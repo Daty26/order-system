@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/Daty26/order-system/inventory-service/internal/model"
+	"github.com/lib/pq"
 )
 
 type InventoryRepository interface {
@@ -15,6 +16,7 @@ type InventoryRepository interface {
 	GetByID(ctx context.Context, id int) (model.Product, error)
 	UpdatePriceCents(ctx context.Context, params UpdatePriceCentsParams) (model.Product, error)
 	ReduceStock(ctx context.Context, params ReduceStockParams) (model.Product, error)
+	GetQuotes(ctx context.Context, params GetQuotesParams) ([]model.ProductQuote, error)
 }
 
 type PostgresInventoryRepo struct {
@@ -153,4 +155,33 @@ func (r *PostgresInventoryRepo) ReduceStock(ctx context.Context, params ReduceSt
 		return model.Product{}, fmt.Errorf("reduce product stock: %w", err)
 	}
 	return product, nil
+}
+func (r *PostgresInventoryRepo) GetQuotes(ctx context.Context, params GetQuotesParams) ([]model.ProductQuote, error) {
+	const query = `
+		SELECT id, price_cents
+		FROM inventory
+		WHERE id=ANY($1)
+`
+	rows, err := r.db.QueryContext(ctx, query, pq.Array(params.IDs))
+	if err != nil {
+		return []model.ProductQuote{}, fmt.Errorf("select query quote: %w", err)
+	}
+	defer rows.Close()
+
+	quotes := make([]model.ProductQuote, 0, len(params.IDs))
+	for rows.Next() {
+		var productQuote model.ProductQuote
+		if err := rows.Scan(
+			&productQuote.ID,
+			&productQuote.PriceCents,
+		); err != nil {
+			return []model.ProductQuote{}, fmt.Errorf("scan product quote: %w", err)
+		}
+		quotes = append(quotes, productQuote)
+	}
+
+	if err := rows.Err(); err != nil {
+		return []model.ProductQuote{}, fmt.Errorf("iterate product quote: %w", err)
+	}
+	return quotes, nil
 }

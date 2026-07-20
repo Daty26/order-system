@@ -132,3 +132,25 @@ func (ih *InventoryHandler) UpdatePrice(w http.ResponseWriter, r *http.Request) 
 	}
 	SuccessResponse(w, http.StatusOK, ToProductResponse(priceModel))
 }
+
+func (h *InventoryHandler) GetQuotes(w http.ResponseWriter, r *http.Request) {
+	var req QuoteProductsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		ErrorResponse(w, http.StatusBadRequest, "invalid input")
+		return
+	}
+	input := service.GetQuotesInput{
+		IDs: req.IDs,
+	}
+	productQuotes, err := h.serv.GetQuotes(r.Context(), input)
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidInput) {
+			ErrorResponse(w, http.StatusBadRequest, "invalid input")
+			return
+		}
+		log.Printf("failed to update price: %s", err.Error())
+		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
+		return
+	}
+	SuccessResponse(w, http.StatusOK, ToQuotesProductReponses(productQuotes))
+}

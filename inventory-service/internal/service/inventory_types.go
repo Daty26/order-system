@@ -13,3 +13,6 @@ type UpdateQuantityInput struct {
 	ID       int
 	Quantity int
 }
+type GetQuotesInput struct {
+	IDs []int
+}

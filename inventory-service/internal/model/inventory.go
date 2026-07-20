@@ -10,3 +10,7 @@ type Product struct {
 	CreatedAt  time.Time `json:"createdAt"`
 	UpdatedAt  time.Time `json:"updatedAt"`
 }
+type ProductQuote struct {
+	ID         int
+	PriceCents int64
+}

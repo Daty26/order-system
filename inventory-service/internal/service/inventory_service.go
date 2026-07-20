@@ -14,7 +14,7 @@ type InventoryService struct {
 	repo repository.InventoryRepository
 }
 
-func NewInventoryService(inventoryRepo *repository.PostgresInventoryRepo) *InventoryService {
+func NewInventoryService(inventoryRepo repository.InventoryRepository) *InventoryService {
 	return &InventoryService{repo: inventoryRepo}
 }
 
@@ -77,4 +77,25 @@ func (s *InventoryService) ReduceStock(ctx context.Context, productId, quantity 
 		return model.Product{}, fmt.Errorf("reduce stock: %w", err)
 	}
 	return updatedProduct, nil
+}
+func (s *InventoryService) GetQuotes(ctx context.Context, input GetQuotesInput) ([]model.ProductQuote, error) {
+	if len(input.IDs) == 0 {
+		return []model.ProductQuote{}, ErrInvalidInput
+	}
+	seen := make(map[int]struct{}, len(input.IDs))
+	ids := make([]int, 0, len(input.IDs))
+	for _, id := range input.IDs {
+		if id <= 0 {
+			return []model.ProductQuote{}, ErrInvalidInput
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	params := repository.GetQuotesParams{
+		IDs: ids,
+	}
+	return s.repo.GetQuotes(ctx, params)
 }

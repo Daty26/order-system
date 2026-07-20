@@ -37,3 +37,25 @@ func ToProductResponses(products []model.Product) []ProductResponse {
 	}
 	return productResponses
 }
+
+type QuoteProductsRequest struct {
+	IDs []int `json:"ids"`
+}
+type QuoteProductsResponse struct {
+	IDs        int   `json:"id"`
+	PriceCents int64 `json:"price_cents"`
+}
+
+func ToQuatesProductResponse(productQuotes model.ProductQuote) QuoteProductsResponse {
+	return QuoteProductsResponse{
+		IDs:        productQuotes.ID,
+		PriceCents: productQuotes.PriceCents,
+	}
+}
+func ToQuotesProductReponses(productQuotesModels []model.ProductQuote) []QuoteProductsResponse {
+	productQuotesResponses := make([]QuoteProductsResponse, 0, len(productQuotesModels))
+	for _, productQuotesModel := range productQuotesModels {
+		productQuotesResponses = append(productQuotesResponses, ToQuatesProductResponse(productQuotesModel))
+	}
+	return productQuotesResponses
+}
