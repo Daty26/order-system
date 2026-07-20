@@ -22,7 +22,7 @@ func (ns *NotificationService) Insert(orderId int, paymentId int, status model.N
 		return model.Notification{}, errors.New("message body can't be empty")
 	}
 
-	var notification model.Notification = model.Notification{
+	notrfication := model.Notification{
 		OrderID:   orderId,
 		PaymentID: paymentId,
 		Status:    status,
@@ -31,6 +31,7 @@ func (ns *NotificationService) Insert(orderId int, paymentId int, status model.N
 	}
 	return ns.repo.Insert(notification)
 }
+
 func (ns *NotificationService) GetByID(id int) (model.Notification, error) {
 	if id <= 0 {
 		return model.Notification{}, errors.New("incorrect id")

@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"github.com/Daty26/order-system/inventory-service/internal/model"
 	"github.com/Daty26/order-system/inventory-service/internal/service"
 	"github.com/go-chi/chi/v5"
 	"log"
