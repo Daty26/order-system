@@ -35,7 +35,7 @@ func (ih *InventoryHandler) GetAllProducts(w http.ResponseWriter, r *http.Reques
 }
 
 func (ih *InventoryHandler) InsertProduct(w http.ResponseWriter, r *http.Request) {
-	if r.Context().Value("role") != "ADMIN" {
+	if !isAdmin(r) {
 		ErrorResponse(w, http.StatusForbidden, "you are not allowed to add products")
 		return
 	}
@@ -69,7 +69,7 @@ func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Reques
 		ErrorResponse(w, http.StatusBadRequest, "invalid id param")
 		return
 	}
-	if r.Context().Value("role") != "ADMIN" {
+	if !isAdmin(r) {
 		ErrorResponse(w, http.StatusForbidden, "you are not allowed to change product quantity")
 		return
 	}
@@ -104,7 +104,7 @@ func (ih *InventoryHandler) UpdatePrice(w http.ResponseWriter, r *http.Request) 
 		ErrorResponse(w, http.StatusBadRequest, "invalid id param")
 		return
 	}
-	if r.Context().Value("role") != "ADMIN" {
+	if !isAdmin(r) {
 		ErrorResponse(w, http.StatusForbidden, "you are not allowed to change product price")
 		return
 	}
