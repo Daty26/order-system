@@ -41,21 +41,21 @@ func ToProductResponses(products []model.Product) []ProductResponse {
 type QuoteProductsRequest struct {
 	IDs []int `json:"ids"`
 }
-type QuoteProductsResponse struct {
+type QuoteProductResponse struct {
 	IDs        int   `json:"id"`
 	PriceCents int64 `json:"price_cents"`
 }
 
-func ToQuatesProductResponse(productQuotes model.ProductQuote) QuoteProductsResponse {
-	return QuoteProductsResponse{
+func ToQuoteProductResponse(productQuotes model.ProductQuote) QuoteProductResponse {
+	return QuoteProductResponse{
 		IDs:        productQuotes.ID,
 		PriceCents: productQuotes.PriceCents,
 	}
 }
-func ToQuotesProductReponses(productQuotesModels []model.ProductQuote) []QuoteProductsResponse {
-	productQuotesResponses := make([]QuoteProductsResponse, 0, len(productQuotesModels))
+func ToQuoteProductReponses(productQuotesModels []model.ProductQuote) []QuoteProductResponse {
+	productQuotesResponses := make([]QuoteProductResponse, 0, len(productQuotesModels))
 	for _, productQuotesModel := range productQuotesModels {
-		productQuotesResponses = append(productQuotesResponses, ToQuatesProductResponse(productQuotesModel))
+		productQuotesResponses = append(productQuotesResponses, ToQuoteProductResponse(productQuotesModel))
 	}
 	return productQuotesResponses
 }

@@ -26,12 +26,12 @@ func parsePagination(r *http.Request) (int, int, bool) {
 			limit = value
 		}
 	}
-	if raw := r.URL.Query().Get("query"); raw != "" {
+	if raw := r.URL.Query().Get("offset"); raw != "" {
 		value, err := strconv.Atoi(raw)
 		if err != nil {
 			return 0, 0, false
 		}
-		if offset < 0 {
+		if value < 0 {
 			return 0, 0, false
 		}
 		offset = value

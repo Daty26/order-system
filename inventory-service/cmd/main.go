@@ -49,9 +49,9 @@ func main() {
 		r.Post("/products", handler.InsertProduct)
 		r.Put("/products/{id}/quantity", handler.UpdateQuantity)
 		r.Put("/products/{id}/price", handler.UpdatePrice)
-		r.Post("/products/quotes", handler.GetQuotes)
 	})
 	r.Get("/products", handler.GetAllProducts)
+	r.Post("/products/quotes", handler.GetQuotes)
 	err := http.ListenAndServe(":8084", r)
 	if err != nil {
 		log.Fatalf("failed to start an http server: %v", err)

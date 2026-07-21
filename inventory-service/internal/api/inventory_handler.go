@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"log"
@@ -87,12 +88,15 @@ func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Reques
 	}
 	productModel, err := ih.serv.UpdateQuantity(r.Context(), input)
 	if err != nil {
-		if errors.Is(err, service.ErrInvalidInput) {
+		switch {
+		case errors.Is(err, service.ErrInvalidInput):
 			ErrorResponse(w, http.StatusBadRequest, "invalid input")
-			return
+		case errors.Is(err, sql.ErrNoRows):
+			ErrorResponse(w, http.StatusNotFound, "product not found")
+		default:
+			log.Printf("failed to update quantity: %s", err.Error())
+			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		}
-		log.Printf("failed to update quantity: %s", err.Error())
-		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
 	SuccessResponse(w, http.StatusOK, ToProductResponse(productModel))
@@ -122,12 +126,15 @@ func (ih *InventoryHandler) UpdatePrice(w http.ResponseWriter, r *http.Request) 
 	}
 	priceModel, err := ih.serv.UpdatePrice(r.Context(), input)
 	if err != nil {
-		if errors.Is(err, service.ErrInvalidInput) {
+		switch {
+		case errors.Is(err, service.ErrInvalidInput):
 			ErrorResponse(w, http.StatusBadRequest, "invalid input")
-			return
+		case errors.Is(err, sql.ErrNoRows):
+			ErrorResponse(w, http.StatusNotFound, "product not found")
+		default:
+			log.Printf("failed to update price: %s", err.Error())
+			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		}
-		log.Printf("failed to update price: %s", err.Error())
-		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
 	SuccessResponse(w, http.StatusOK, ToProductResponse(priceModel))
@@ -148,9 +155,9 @@ func (h *InventoryHandler) GetQuotes(w http.ResponseWriter, r *http.Request) {
 			ErrorResponse(w, http.StatusBadRequest, "invalid input")
 			return
 		}
-		log.Printf("failed to update price: %s", err.Error())
+		log.Printf("failed to get product quotes: %s", err.Error())
 		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
-	SuccessResponse(w, http.StatusOK, ToQuotesProductReponses(productQuotes))
+	SuccessResponse(w, http.StatusOK, ToQuoteProductReponses(productQuotes))
 }

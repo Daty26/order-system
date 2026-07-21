@@ -23,7 +23,7 @@ func (is *InventoryService) GetAll(ctx context.Context, limit, offset int) ([]mo
 }
 
 func (is *InventoryService) UpdateQuantity(ctx context.Context, input UpdateQuantityInput) (model.Product, error) {
-	if input.ID < 0 || input.Quantity < 0 {
+	if input.ID <= 0 || input.Quantity <= 0 {
 		return model.Product{}, ErrInvalidInput
 	}
 
@@ -50,8 +50,9 @@ func (s *InventoryService) InsertProduct(ctx context.Context, input InsertProduc
 	}
 	return s.repo.Insert(ctx, params)
 }
+
 func (is *InventoryService) UpdatePrice(ctx context.Context, input UpdateProductInput) (model.Product, error) {
-	if input.ID < 0 || input.PriceCents < 0 {
+	if input.ID <= 0 || input.PriceCents <= 0 {
 		return model.Product{}, ErrInvalidInput
 	}
 	params := repository.UpdatePriceCentsParams{
