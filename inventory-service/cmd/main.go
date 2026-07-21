@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -23,10 +24,12 @@ func main() {
 	defer db.DataDB.Close()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
 	repo := repository.NewPostgresInventoryRepo(db.DataDB)
 	svc := service.NewInventoryService(repo)
-	handler := api.NewInventoryHandler(svc)
+	handler := api.NewInventoryHandler(svc, logger)
 	r := chi.NewRouter()
 	kafkaBrokers := strings.Split(getEnv("KAFKA_BROKERS", "localhost:9092"), ",")
 	go func() {
@@ -51,7 +54,9 @@ func main() {
 		r.Put("/products/{id}/price", handler.UpdatePrice)
 	})
 	r.Get("/products", handler.GetAllProducts)
+	// TODO	protect quotes with service-to-service auth
 	r.Post("/products/quotes", handler.GetQuotes)
+
 	err := http.ListenAndServe(":8084", r)
 	if err != nil {
 		log.Fatalf("failed to start an http server: %v", err)

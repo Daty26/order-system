@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -13,11 +14,12 @@ import (
 )
 
 type InventoryHandler struct {
-	serv *service.InventoryService
+	serv   *service.InventoryService
+	logger *slog.Logger
 }
 
-func NewInventoryHandler(serv *service.InventoryService) *InventoryHandler {
-	return &InventoryHandler{serv: serv}
+func NewInventoryHandler(serv *service.InventoryService, logger *slog.Logger) *InventoryHandler {
+	return &InventoryHandler{serv: serv, logger: logger}
 }
 
 func (ih *InventoryHandler) GetAllProducts(w http.ResponseWriter, r *http.Request) {
@@ -28,7 +30,11 @@ func (ih *InventoryHandler) GetAllProducts(w http.ResponseWriter, r *http.Reques
 	}
 	products, err := ih.serv.GetAll(r.Context(), limit, offset)
 	if err != nil {
-		log.Printf("failed to get products: %v", err)
+		ih.logger.ErrorContext(
+			r.Context(),
+			"failed to get all products",
+			"error", err,
+		)
 		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
@@ -57,7 +63,12 @@ func (ih *InventoryHandler) InsertProduct(w http.ResponseWriter, r *http.Request
 			ErrorResponse(w, http.StatusBadRequest, "invalid input")
 			return
 		}
-		log.Printf("failed to insert product: %v", err)
+		ih.logger.ErrorContext(
+			r.Context(),
+			"failed to insert product",
+			"error", err,
+			"product_name", insertInput.Name,
+		)
 		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
@@ -94,7 +105,12 @@ func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Reques
 		case errors.Is(err, sql.ErrNoRows):
 			ErrorResponse(w, http.StatusNotFound, "product not found")
 		default:
-			log.Printf("failed to update quantity: %s", err.Error())
+			ih.logger.ErrorContext(
+				r.Context(),
+				"failed to update quantity",
+				"error", err,
+				"product_id", id,
+			)
 			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		}
 		return
@@ -132,7 +148,12 @@ func (ih *InventoryHandler) UpdatePrice(w http.ResponseWriter, r *http.Request) 
 		case errors.Is(err, sql.ErrNoRows):
 			ErrorResponse(w, http.StatusNotFound, "product not found")
 		default:
-			log.Printf("failed to update price: %s", err.Error())
+			ih.logger.ErrorContext(
+				r.Context(),
+				"failed to update price",
+				"error", err,
+				"product_id", id,
+			)
 			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		}
 		return
@@ -155,7 +176,12 @@ func (h *InventoryHandler) GetQuotes(w http.ResponseWriter, r *http.Request) {
 			ErrorResponse(w, http.StatusBadRequest, "invalid input")
 			return
 		}
-		log.Printf("failed to get product quotes: %s", err.Error())
+		h.logger.ErrorContext(
+			r.Context(),
+			"failed to get product quotes",
+			"error", err,
+			"product_ids", req.IDs,
+		)
 		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}

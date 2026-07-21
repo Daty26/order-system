@@ -26,17 +26,14 @@ func (is *InventoryService) UpdateQuantity(ctx context.Context, input UpdateQuan
 	if input.ID <= 0 || input.Quantity <= 0 {
 		return model.Product{}, ErrInvalidInput
 	}
-
 	params := repository.UpdateQuantityParams{
 		ProductID: input.ID,
 		Quantity:  input.Quantity,
 	}
-
 	return is.repo.UpdateQuantity(ctx, params)
 }
 
 func (s *InventoryService) InsertProduct(ctx context.Context, input InsertProductInput) (model.Product, error) {
-
 	if input.Name == "" {
 		return model.Product{}, ErrInvalidInput
 	}
@@ -52,6 +49,7 @@ func (s *InventoryService) InsertProduct(ctx context.Context, input InsertProduc
 }
 
 func (is *InventoryService) UpdatePrice(ctx context.Context, input UpdateProductInput) (model.Product, error) {
+	// TODO decide if free products are allowed
 	if input.ID <= 0 || input.PriceCents <= 0 {
 		return model.Product{}, ErrInvalidInput
 	}
@@ -79,6 +77,7 @@ func (s *InventoryService) ReduceStock(ctx context.Context, productId, quantity 
 	}
 	return updatedProduct, nil
 }
+
 func (s *InventoryService) GetQuotes(ctx context.Context, input GetQuotesInput) ([]model.ProductQuote, error) {
 	if len(input.IDs) == 0 {
 		return []model.ProductQuote{}, ErrInvalidInput
