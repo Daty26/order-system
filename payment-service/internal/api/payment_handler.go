@@ -35,19 +35,28 @@ func NewRepoPyament(paymentService *service.PaymentService) *PaymentHandler {
 // @Failure 400 {string} string "Invalid request"
 // @Router /payments [post]
 func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
-	userId := int(r.Context().Value("user_id").(float64))
-	var req struct {
-		OrderID     int   `json:"orderId"`
-		AmountCents int64 `json:"amount_cents"`
-	}
+	userID := int(r.Context().Value("user_id").(float64))
+	// TODO don't trust user to enter amount cents
+	var req ProcessPaymentRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, "Invalid request")
 		return
 	}
-	payment, err := h.paymentService.ProcessPayment(r.Context(), req.OrderID, req.AmountCents, userId)
+	input := service.ProcessPaymentInput{
+		OrderID:     req.OrderID,
+		UserID:      userID,
+		AmountCents: req.AmountCents,
+	}
+
+	payment, err := h.paymentService.ProcessPayment(r.Context(), input)
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, err.Error())
+		switch {
+		case errors.Is(err, service.ErrInvalidInput):
+			ErrorResponse(w, http.StatusBadRequest, "invalid input")
+		default:
+			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
+		}
 		return
 	}
 	SuccessPayment(w, http.StatusCreated, payment)

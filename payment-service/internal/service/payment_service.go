@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
+	"fmt"
 
 	"github.com/Daty26/order-system/payment-service/internal/kafka"
 	"github.com/Daty26/order-system/payment-service/internal/model"
@@ -20,30 +20,27 @@ func NewPaymentService(payRep repository.PaymentRep, prod *kafka.KafkaProducer) 
 	return &PaymentService{paymentRep: payRep, producer: prod}
 }
 
-func (s *PaymentService) ProcessPayment(ctx context.Context, orderID int, amount int64, userId int) (model.Payment, error) {
-	if amount <= 0 || userId < 0 {
+func (s *PaymentService) ProcessPayment(ctx context.Context, input ProcessPaymentInput) (model.Payment, error) {
+	if input.AmountCents <= 0 || input.UserID <= 0 || input.OrderID <= 0 {
 		return model.Payment{}, ErrInvalidInput
 	}
-	payment := model.Payment{
-		OrderID:     orderID,
+	payment := repository.ProcessPaymentParams{
+		OrderID:     input.OrderID,
 		Status:      model.PaymentCompleted,
-		AmountCents: amount,
-		UserID:      userId,
+		AmountCents: input.AmountCents,
+		UserID:      input.UserID,
 	}
 	savedPayment, err := s.paymentRep.Save(ctx, payment)
 	if err != nil {
-		return model.Payment{}, err
+		return model.Payment{}, fmt.Errorf("save payment: %w", err)
 	}
 	savedPaymentJson, err := json.Marshal(savedPayment)
 	if err != nil {
-		return model.Payment{}, err
+		return model.Payment{}, fmt.Errorf("marshal payment completed event: %w", err)
 	}
-	err = s.producer.Publish("payment.completed", savedPaymentJson)
-	if err != nil {
-		log.Fatalln("Couldn't publish topic payment.completed: " + err.Error())
-		return model.Payment{}, err
+	if err = s.producer.Publish("payment.completed", savedPaymentJson); err != nil {
+		return model.Payment{}, fmt.Errorf("publish payment completed event: %w", err)
 	}
-	// log.Println(string(savedPaymentJson))
 	return savedPayment, nil
 }
 
