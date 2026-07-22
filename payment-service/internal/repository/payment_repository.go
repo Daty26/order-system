@@ -1,18 +1,21 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
+
 	"github.com/Daty26/order-system/payment-service/internal/model"
 )
 
 type PaymentRep interface {
-	Save(payment model.Payment) (model.Payment, error)
-	GetAll() ([]model.Payment, error)
-	GetByID(id int) (model.Payment, error)
-	Update(id int, status model.PaymentStatus, amount float64) (model.Payment, error)
-	Delete(id int) error
-	GetAllByUserId(userId int) ([]model.Payment, error)
+	Save(ctx context.Context, payment model.Payment) (model.Payment, error)
+	GetAll(ctx context.Context, limit, offset int) ([]model.Payment, error)
+	GetByID(ctx context.Context, id int) (model.Payment, error)
+	Update(ctx context.Context, id int, status model.PaymentStatus, amount float64) (model.Payment, error)
+	Delete(ctx context.Context, id int) error
+	GetAllByUserId(ctx context.Context, userId int) ([]model.Payment, error)
 }
+
 type PostgresPaymentRep struct {
 	db *sql.DB
 }
@@ -21,16 +24,16 @@ func NewPostgresRep(db *sql.DB) *PostgresPaymentRep {
 	return &PostgresPaymentRep{db: db}
 }
 
-func (r *PostgresPaymentRep) Save(payment model.Payment) (model.Payment, error) {
+func (r *PostgresPaymentRep) Save(ctx context.Context, payment model.Payment) (model.Payment, error) {
 	query := `INSERT INTO payments(order_id, status, amount, user_id) VALUES ($1, $2, $3, $4) RETURNING id`
-	err := r.db.QueryRow(query, payment.OrderID, payment.Status, payment.Amount, payment.UserID).Scan(&payment.ID)
+	err := r.db.QueryRow(query, payment.OrderID, payment.Status, payment.AmountCents, payment.UserID).Scan(&payment.ID)
 	if err != nil {
 		return model.Payment{}, err
 	}
 	return payment, nil
 }
 
-func (r *PostgresPaymentRep) GetAll() ([]model.Payment, error) {
+func (r *PostgresPaymentRep) GetAll(ctx context.Context, limit, offset int) ([]model.Payment, error) {
 	rows, err := r.db.Query(`SELECT id, order_id, status, amount, user_id from payments`)
 	if err != nil {
 		return nil, err
@@ -39,7 +42,7 @@ func (r *PostgresPaymentRep) GetAll() ([]model.Payment, error) {
 	var payments []model.Payment
 	for rows.Next() {
 		var payment model.Payment
-		err := rows.Scan(&payment.ID, &payment.OrderID, &payment.Status, &payment.Amount, &payment.UserID)
+		err := rows.Scan(&payment.ID, &payment.OrderID, &payment.Status, &payment.AmountCents, &payment.UserID)
 		if err != nil {
 			return nil, err
 		}
@@ -47,7 +50,8 @@ func (r *PostgresPaymentRep) GetAll() ([]model.Payment, error) {
 	}
 	return payments, nil
 }
-func (r *PostgresPaymentRep) GetAllByUserId(userId int) ([]model.Payment, error) {
+
+func (r *PostgresPaymentRep) GetAllByUserId(ctx context.Context, userId int) ([]model.Payment, error) {
 	rows, err := r.db.Query(`SELECT id, order_id, status, amount, user_id from payments where user_id = $1`, userId)
 	if err != nil {
 		return nil, err
@@ -56,7 +60,7 @@ func (r *PostgresPaymentRep) GetAllByUserId(userId int) ([]model.Payment, error)
 	var payments []model.Payment
 	for rows.Next() {
 		var payment model.Payment
-		err := rows.Scan(&payment.ID, &payment.OrderID, &payment.Status, &payment.Amount, &payment.UserID)
+		err := rows.Scan(&payment.ID, &payment.OrderID, &payment.Status, &payment.AmountCents, &payment.UserID)
 		if err != nil {
 			return nil, err
 		}
@@ -65,25 +69,31 @@ func (r *PostgresPaymentRep) GetAllByUserId(userId int) ([]model.Payment, error)
 	return payments, nil
 }
 
-func (r *PostgresPaymentRep) GetByID(id int) (model.Payment, error) {
+func (r *PostgresPaymentRep) GetByID(ctx context.Context, id int) (model.Payment, error) {
 	var payment model.Payment
-	err := r.db.QueryRow("SELECT id, order_id, status, amount, user_id from payments where id=$1", id).Scan(&payment.ID, &payment.OrderID, &payment.Status, &payment.Amount, &payment.UserID)
+	err := r.db.QueryRow("SELECT id, order_id, status, amount, user_id from payments where id=$1", id).Scan(&payment.ID, &payment.OrderID, &payment.Status, &payment.AmountCents, &payment.UserID)
 	if err != nil {
 		return model.Payment{}, err
 	}
 	return payment, nil
 }
 
-func (r *PostgresPaymentRep) Update(id int, status model.PaymentStatus, amount float64) (model.Payment, error) {
+func (r *PostgresPaymentRep) Update(ctx context.Context, id int, status model.PaymentStatus, amount float64) (model.Payment, error) {
 	var payment model.Payment
 	query := `update payments SET status=$1, amount=$2 where id = $3 RETURNING id,order_id, status, amount, user_id`
-	if err := r.db.QueryRow(query, status, amount, id).Scan(&payment.ID, &payment.OrderID, &payment.Status, &payment.Amount, &payment.UserID); err != nil {
+	if err := r.db.QueryRow(query, status, amount, id).Scan(
+		&payment.ID,
+		&payment.OrderID,
+		&payment.Status,
+		&payment.AmountCents,
+		&payment.UserID,
+	); err != nil {
 		return model.Payment{}, err
 	}
 	return payment, nil
 }
 
-func (r *PostgresPaymentRep) Delete(id int) error {
+func (r *PostgresPaymentRep) Delete(ctx context.Context, id int) error {
 	query := `Delete from payments where id = $1`
 	res, err := r.db.Exec(query, id)
 	if err != nil {

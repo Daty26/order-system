@@ -1,12 +1,14 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"log"
+
 	"github.com/Daty26/order-system/payment-service/internal/kafka"
 	"github.com/Daty26/order-system/payment-service/internal/model"
 	"github.com/Daty26/order-system/payment-service/internal/repository"
-	"log"
 )
 
 type PaymentService struct {
@@ -18,20 +20,17 @@ func NewPaymentService(payRep repository.PaymentRep, prod *kafka.KafkaProducer) 
 	return &PaymentService{paymentRep: payRep, producer: prod}
 }
 
-func (s *PaymentService) ProcessPayment(orderID int, amount float64, userId int) (model.Payment, error) {
-	if amount <= 0 {
-		return model.Payment{}, errors.New("amount can't be negative")
-	}
-	if userId < 0 {
-		return model.Payment{}, errors.New("incorrect userID")
+func (s *PaymentService) ProcessPayment(ctx context.Context, orderID int, amount int64, userId int) (model.Payment, error) {
+	if amount <= 0 || userId < 0 {
+		return model.Payment{}, ErrInvalidInput
 	}
 	payment := model.Payment{
-		OrderID: orderID,
-		Status:  model.PaymentCompleted,
-		Amount:  amount,
-		UserID:  userId,
+		OrderID:     orderID,
+		Status:      model.PaymentCompleted,
+		AmountCents: amount,
+		UserID:      userId,
 	}
-	savedPayment, err := s.paymentRep.Save(payment)
+	savedPayment, err := s.paymentRep.Save(ctx, payment)
 	if err != nil {
 		return model.Payment{}, err
 	}
@@ -44,43 +43,44 @@ func (s *PaymentService) ProcessPayment(orderID int, amount float64, userId int)
 		log.Fatalln("Couldn't publish topic payment.completed: " + err.Error())
 		return model.Payment{}, err
 	}
-	log.Println(string(savedPaymentJson))
+	// log.Println(string(savedPaymentJson))
 	return savedPayment, nil
 }
 
-func (s *PaymentService) GetAllPayments() ([]model.Payment, error) {
-	return s.paymentRep.GetAll()
+func (s *PaymentService) GetAllPayments(ctx context.Context, limit, offset int) ([]model.Payment, error) {
+	return s.paymentRep.GetAll(ctx, limit, offset)
 }
-func (s *PaymentService) GetAllByUserId(userId int) ([]model.Payment, error) {
+
+func (s *PaymentService) GetAllByUserId(ctx context.Context, userId int) ([]model.Payment, error) {
 	if userId < 0 {
-		return []model.Payment{}, errors.New("incorrect userid")
+		return []model.Payment{}, ErrInvalidInput
 	}
-	return s.paymentRep.GetAllByUserId(userId)
+	return s.paymentRep.GetAllByUserId(ctx, userId)
 }
 
-func (s *PaymentService) GetPaymentByID(id int) (model.Payment, error) {
+func (s *PaymentService) GetPaymentByID(ctx context.Context, id int) (model.Payment, error) {
 	if id < 0 {
 		return model.Payment{}, errors.New("invalid id")
 	}
-	return s.paymentRep.GetByID(id)
+	return s.paymentRep.GetByID(ctx, id)
 }
 
-func (s *PaymentService) UpdatePayment(id int, status model.PaymentStatus, amount float64) (model.Payment, error) {
+func (s *PaymentService) UpdatePayment(ctx context.Context, id int, status model.PaymentStatus, amount float64) (model.Payment, error) {
 	if id < 0 {
-		return model.Payment{}, errors.New("invalid id")
+		return model.Payment{}, ErrInvalidInput
 	}
 	if status != model.PaymentPending && status != model.PaymentCompleted && status != model.PaymentFailed {
 		return model.Payment{}, errors.New("incorrect type of status")
 	}
 	if amount < 0 {
-		return model.Payment{}, errors.New("invalid amount")
+		return model.Payment{}, ErrInvalidInput
 	}
-	return s.paymentRep.Update(id, status, amount)
+	return s.paymentRep.Update(ctx, id, status, amount)
 }
 
-func (s *PaymentService) DeletePayment(id int) error {
+func (s *PaymentService) DeletePayment(ctx context.Context, id int) error {
 	if id <= 0 {
-		return errors.New("invalid id")
+		return ErrInvalidInput
 	}
-	return s.paymentRep.Delete(id)
+	return s.paymentRep.Delete(ctx, id)
 }

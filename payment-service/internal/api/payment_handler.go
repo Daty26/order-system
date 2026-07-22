@@ -17,8 +17,8 @@ type PaymentHandler struct {
 	paymentService *service.PaymentService
 }
 type PaymentRequest struct {
-	OrderID int     `json:"orderId"`
-	Amount  float64 `json:"amount"`
+	OrderID     int   `json:"orderId"`
+	AmountCents int64 `json:"amount_cents"`
 }
 
 func NewRepoPyament(paymentService *service.PaymentService) *PaymentHandler {
@@ -34,18 +34,18 @@ func NewRepoPyament(paymentService *service.PaymentService) *PaymentHandler {
 // @Success 201 {object} model.Payment
 // @Failure 400 {string} string "Invalid request"
 // @Router /payments [post]
-func (s *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
+func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 	userId := int(r.Context().Value("user_id").(float64))
 	var req struct {
-		OrderID int     `json:"orderId"`
-		Amount  float64 `json:"amount"`
+		OrderID     int   `json:"orderId"`
+		AmountCents int64 `json:"amount_cents"`
 	}
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "Invalid Request: "+err.Error())
+		ErrorResponse(w, http.StatusBadRequest, "Invalid request")
 		return
 	}
-	payment, err := s.paymentService.ProcessPayment(req.OrderID, req.Amount, userId)
+	payment, err := h.paymentService.ProcessPayment(r.Context(), req.OrderID, req.AmountCents, userId)
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -78,7 +78,7 @@ func (s *PaymentHandler) UpdatePayment(w http.ResponseWriter, r *http.Request) {
 		ErrorResponse(w, http.StatusBadRequest, "Invalid request: "+err.Error())
 		return
 	}
-	payment, err := s.paymentService.UpdatePayment(id, req.Status, req.Amount)
+	payment, err := s.paymentService.UpdatePayment(r.Context(), id, req.Status, req.Amount)
 	if err != nil {
 		ErrorResponse(w, http.StatusInternalServerError, "Couldn't update the payment: "+err.Error())
 		return
@@ -102,7 +102,7 @@ func (s *PaymentHandler) GetPaymentByID(w http.ResponseWriter, r *http.Request) 
 		ErrorResponse(w, http.StatusBadRequest, "Invalid id type")
 		return
 	}
-	payment, err := s.paymentService.GetPaymentByID(id)
+	payment, err := s.paymentService.GetPaymentByID(r.Context(), id)
 	if errors.Is(err, sql.ErrNoRows) {
 		ErrorResponse(w, http.StatusNotFound, "Can't find payment with specified id ")
 		return
@@ -129,7 +129,7 @@ func (s *PaymentHandler) DeletePayment(w http.ResponseWriter, r *http.Request) {
 		ErrorResponse(w, http.StatusBadRequest, "Invalid id type")
 		return
 	}
-	err = s.paymentService.DeletePayment(id)
+	err = s.paymentService.DeletePayment(r.Context(), id)
 	if errors.Is(err, sql.ErrNoRows) {
 		ErrorResponse(w, http.StatusNotFound, "no payment with such id")
 		return
@@ -150,9 +150,9 @@ func (s *PaymentHandler) DeletePayment(w http.ResponseWriter, r *http.Request) {
 // @Router /payments [get]
 func (s *PaymentHandler) GetPayments(w http.ResponseWriter, r *http.Request) {
 	role := r.Context().Value("role")
-	userId := int(r.Context().Value("user_id").(float64))
+	userID := int(r.Context().Value("user_id").(float64))
 	if role == "ADMIN" {
-		payments, err := s.paymentService.GetAllPayments()
+		payments, err := s.paymentService.GetAllPayments(r.Context())
 		if err != nil {
 			ErrorResponse(w, http.StatusBadRequest, "Couldn't fetch orders: "+err.Error())
 			return
@@ -161,7 +161,7 @@ func (s *PaymentHandler) GetPayments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payments, err := s.paymentService.GetAllByUserId(userId)
+	payments, err := s.paymentService.GetAllByUserId(r.Context(), userID)
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, "Couldn't fetch orders: "+err.Error())
 		return
