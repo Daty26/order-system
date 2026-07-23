@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/Daty26/order-system/payment-service/internal/client/order"
 	"github.com/Daty26/order-system/payment-service/internal/middleware"
 
 	"github.com/Daty26/order-system/payment-service/internal/kafka"
@@ -33,9 +35,11 @@ func main() {
 		log.Fatalf("couldn't create producer: %v", err)
 	}
 	defer producer.Close()
-
+	orderClient := order.NewClient(
+		getEnv("ORDER_SERVICE_URL", "http://localhost:80"),
+		&http.Client{Timeout: 2 * time.Second})
 	repo := repository.NewPostgresRep(db.DataDB)
-	srv := service.NewPaymentService(repo, producer)
+	srv := service.NewPaymentService(repo, producer, orderClient)
 
 	type orderCreated struct {
 		OrderID     int     `json:"order_id"`

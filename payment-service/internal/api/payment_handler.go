@@ -44,9 +44,9 @@ func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	input := service.ProcessPaymentInput{
-		OrderID:     req.OrderID,
-		UserID:      userID,
-		AmountCents: req.AmountCents,
+		OrderID:    req.OrderID,
+		UserID:     userID,
+		AuthHeader: r.Header.Get("Authorization"),
 	}
 
 	payment, err := h.paymentService.ProcessPayment(r.Context(), input)
@@ -161,7 +161,12 @@ func (s *PaymentHandler) GetPayments(w http.ResponseWriter, r *http.Request) {
 	role := r.Context().Value("role")
 	userID := int(r.Context().Value("user_id").(float64))
 	if role == "ADMIN" {
-		payments, err := s.paymentService.GetAllPayments(r.Context())
+		limit, offset, ok := parsePagination(r)
+		if !ok {
+			ErrorResponse(w, http.StatusBadRequest, "invalid pagination query param")
+			return
+		}
+		payments, err := s.paymentService.GetAllPayments(r.Context(), limit, offset)
 		if err != nil {
 			ErrorResponse(w, http.StatusBadRequest, "Couldn't fetch orders: "+err.Error())
 			return
@@ -169,7 +174,6 @@ func (s *PaymentHandler) GetPayments(w http.ResponseWriter, r *http.Request) {
 		SuccessPayment(w, http.StatusOK, payments)
 		return
 	}
-
 	payments, err := s.paymentService.GetAllByUserId(r.Context(), userID)
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, "Couldn't fetch orders: "+err.Error())

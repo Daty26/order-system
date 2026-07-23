@@ -14,21 +14,26 @@ import (
 type PaymentService struct {
 	paymentRep repository.PaymentRep
 	producer   *kafka.KafkaProducer
+	client     OrderClient
 }
 
-func NewPaymentService(payRep repository.PaymentRep, prod *kafka.KafkaProducer) *PaymentService {
-	return &PaymentService{paymentRep: payRep, producer: prod}
+func NewPaymentService(payRep repository.PaymentRep, prod *kafka.KafkaProducer, client OrderClient) *PaymentService {
+	return &PaymentService{paymentRep: payRep, producer: prod, client: client}
 }
 
 func (s *PaymentService) ProcessPayment(ctx context.Context, input ProcessPaymentInput) (model.Payment, error) {
-	if input.AmountCents <= 0 || input.UserID <= 0 || input.OrderID <= 0 {
+	if input.UserID <= 0 || input.OrderID <= 0 {
 		return model.Payment{}, ErrInvalidInput
+	}
+	order, err := s.client.GetOrder(ctx, input.OrderID, input.AuthHeader)
+	if err != nil {
+		return model.Payment{}, fmt.Errorf("get order client: %w", err)
 	}
 	payment := repository.ProcessPaymentParams{
 		OrderID:     input.OrderID,
 		Status:      model.PaymentCompleted,
-		AmountCents: input.AmountCents,
 		UserID:      input.UserID,
+		AmountCents: order.TotalAmountCents,
 	}
 	savedPayment, err := s.paymentRep.Save(ctx, payment)
 	if err != nil {

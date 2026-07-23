@@ -208,6 +208,7 @@ func (r *PostgresOrderRepo) GetAllByUserID(ctx context.Context, userId, limit, o
 
 	return orders, nil
 }
+
 func (r *PostgresOrderRepo) GetByID(ctx context.Context, id int) (model.Orders, error) {
 	var order model.Orders
 	err := r.db.QueryRowContext(ctx,
@@ -299,3 +300,5 @@ func (r *PostgresOrderRepo) Cancel(ctx context.Context, orderID int) (model.Orde
 	return order, nil
 
 }
+
+// TODO add other options other than cancel
