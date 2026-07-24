@@ -67,17 +67,18 @@ func (s *PaymentService) GetPaymentByID(ctx context.Context, id int) (model.Paym
 	return s.paymentRep.GetByID(ctx, id)
 }
 
-func (s *PaymentService) UpdatePayment(ctx context.Context, id int, status model.PaymentStatus, amount float64) (model.Payment, error) {
-	if id < 0 {
+func (s *PaymentService) UpdatePayment(ctx context.Context, input UpdatePaymentInput) (model.Payment, error) {
+	if input.ID < 0 {
 		return model.Payment{}, ErrInvalidInput
 	}
-	if status != model.PaymentPending && status != model.PaymentCompleted && status != model.PaymentFailed {
-		return model.Payment{}, errors.New("incorrect type of status")
+	if input.Status != model.PaymentPending && input.Status != model.PaymentCompleted && input.Status != model.PaymentFailed {
+		return model.Payment{}, fmt.Errorf("incorrect status: %w", ErrInvalidInput)
 	}
-	if amount < 0 {
-		return model.Payment{}, ErrInvalidInput
+	params := repository.UpdatePaymentParams{
+		ID:     input.ID,
+		Status: input.Status,
 	}
-	return s.paymentRep.Update(ctx, id, status, amount)
+	return s.paymentRep.UpdateStatus(ctx, params)
 }
 
 func (s *PaymentService) DeletePayment(ctx context.Context, id int) error {

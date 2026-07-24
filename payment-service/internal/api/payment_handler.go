@@ -4,14 +4,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"github.com/Daty26/order-system/payment-service/internal/model"
+	"github.com/Daty26/order-system/payment-service/internal/service"
+	"github.com/go-chi/chi/v5"
 	"log/slog"
 	"net/http"
 	"strconv"
-
-	"github.com/Daty26/order-system/payment-service/internal/model"
-	_ "github.com/Daty26/order-system/payment-service/internal/model"
-	"github.com/Daty26/order-system/payment-service/internal/service"
-	"github.com/go-chi/chi/v5"
 )
 
 type PaymentHandler struct {
@@ -50,7 +48,6 @@ func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 		UserID:     userID,
 		AuthHeader: r.Header.Get("Authorization"),
 	}
-
 	payment, err := h.paymentService.ProcessPayment(r.Context(), input)
 	if err != nil {
 		switch {
@@ -85,17 +82,25 @@ func (s *PaymentHandler) UpdatePayment(w http.ResponseWriter, r *http.Request) {
 		ErrorResponse(w, http.StatusBadRequest, "Invalid id type")
 		return
 	}
-	var req struct {
-		Status model.PaymentStatus `json:"status"`
-		Amount float64             `json:"amount"`
-	}
+	var req UpdatePaymentRequest
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "Invalid request: "+err.Error())
+		ErrorResponse(w, http.StatusBadRequest, "Invalid payment request")
 		return
 	}
-	payment, err := s.paymentService.UpdatePayment(r.Context(), id, req.Status, req.Amount)
+	input := service.UpdatePaymentInput{
+		ID:     id,
+		Status: req.Status,
+	}
+	payment, err := s.paymentService.UpdatePayment(r.Context(), input)
 	if err != nil {
-		ErrorResponse(w, http.StatusInternalServerError, "Couldn't update the payment: "+err.Error())
+		switch {
+		case errors.Is(err, service.ErrInvalidInput):
+			ErrorResponse(w, http.StatusBadRequest, "invalid payment request")
+			s.logger.WarnContext(r.Context(), "incorrect payment request", "error", err)
+		default:
+			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
+			s.logger.ErrorContext(r.Context(), "failed to update the payment", "error", err, "product_id", id)
+		}
 		return
 	}
 	SuccessPayment(w, http.StatusOK, payment)
@@ -114,7 +119,7 @@ func (s *PaymentHandler) UpdatePayment(w http.ResponseWriter, r *http.Request) {
 func (s *PaymentHandler) GetPaymentByID(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "Invalid id type")
+		ErrorResponse(w, http.StatusBadRequest, "invalid id")
 		return
 	}
 	payment, err := s.paymentService.GetPaymentByID(r.Context(), id)

@@ -8,3 +8,7 @@ type ProcessPaymentParams struct {
 	AmountCents int64
 	UserID      int
 }
+type UpdatePaymentParams struct {
+	ID     int
+	Status model.PaymentStatus
+}
