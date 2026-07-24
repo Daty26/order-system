@@ -14,7 +14,7 @@ type PaymentRep interface {
 	GetByID(ctx context.Context, id int) (model.Payment, error)
 	UpdateStatus(ctx context.Context, params UpdatePaymentParams) (model.Payment, error)
 	Delete(ctx context.Context, id int) error
-	GetAllByUserId(ctx context.Context, userId int) ([]model.Payment, error)
+	GetAllByUserId(ctx context.Context, params GetAllByUserIDParams) ([]model.Payment, error)
 }
 
 type PostgresPaymentRep struct {
@@ -51,9 +51,15 @@ func (r *PostgresPaymentRep) Save(ctx context.Context, params ProcessPaymentPara
 }
 
 func (r *PostgresPaymentRep) GetAll(ctx context.Context, limit, offset int) ([]model.Payment, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT id, order_id, status, amount_cents, user_id from payments`)
+	query := `
+		SELECT id, order_id, status, amount_cents, user_id
+		from payments
+		ORDER BY id DESC
+		LIMIT $1, OFFSET $2
+`
+	rows, err := r.db.QueryContext(ctx, query, limit, offset)
 	if err != nil {
-		return nil, err
+		return []model.Payment{}, err
 	}
 	defer rows.Close()
 	var payments []model.Payment
@@ -61,27 +67,45 @@ func (r *PostgresPaymentRep) GetAll(ctx context.Context, limit, offset int) ([]m
 		var payment model.Payment
 		err := rows.Scan(&payment.ID, &payment.OrderID, &payment.Status, &payment.AmountCents, &payment.UserID)
 		if err != nil {
-			return nil, err
+			return []model.Payment{}, err
 		}
 		payments = append(payments, payment)
+	}
+	if err := rows.Err(); err != nil {
+		return []model.Payment{}, fmt.Errorf("iterate payments rows: %w", err)
 	}
 	return payments, nil
 }
 
-func (r *PostgresPaymentRep) GetAllByUserId(ctx context.Context, userId int) ([]model.Payment, error) {
-	rows, err := r.db.QueryContext(ctx, `SELECT id, order_id, status, amount_cents, user_id from payments where user_id = $1`, userId)
+func (r *PostgresPaymentRep) GetAllByUserId(ctx context.Context, params GetAllByUserIDParams) ([]model.Payment, error) {
+	query := `
+		SELECT id, order_id, status, amount_cents, user_id
+		from payments
+		where user_id = $1
+		ORDER BY id desc
+		LIMIT $2, OFFSET $3
+`
+	rows, err := r.db.QueryContext(ctx, query, params.ID, params.Limit, params.Offset)
 	if err != nil {
-		return nil, err
+		return []model.Payment{}, err
 	}
 	defer rows.Close()
 	var payments []model.Payment
 	for rows.Next() {
 		var payment model.Payment
-		err := rows.Scan(&payment.ID, &payment.OrderID, &payment.Status, &payment.AmountCents, &payment.UserID)
-		if err != nil {
-			return nil, err
+		if err := rows.Scan(
+			&payment.ID,
+			&payment.OrderID,
+			&payment.Status,
+			&payment.AmountCents,
+			&payment.UserID,
+		); err != nil {
+			return []model.Payment{}, err
 		}
 		payments = append(payments, payment)
+	}
+	if err := rows.Err(); err != nil {
+		return []model.Payment{}, err
 	}
 	return payments, nil
 }
@@ -108,7 +132,7 @@ func (r *PostgresPaymentRep) GetByID(ctx context.Context, id int) (model.Payment
 
 func (r *PostgresPaymentRep) UpdateStatus(ctx context.Context, params UpdatePaymentParams) (model.Payment, error) {
 	var payment model.Payment
-	query := `update payments SET status=$1 where id = $2 RETURNING id,order_id, status, amount_cents, user_id`
+	query := `update payments SET status=$1 where id = $2 AND status = 'PENDING' RETURNING id, order_id, status, amount_cents, user_id`
 	if err := r.db.QueryRowContext(ctx, query, params.Status, params.ID).Scan(
 		&payment.ID,
 		&payment.OrderID,

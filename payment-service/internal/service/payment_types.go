@@ -23,3 +23,8 @@ type UpdatePaymentInput struct {
 	ID     int
 	Status model.PaymentStatus
 }
+type GetAllByUserIDInput struct {
+	ID     int
+	Limit  int
+	Offset int
+}

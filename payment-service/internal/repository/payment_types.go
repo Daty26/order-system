@@ -12,3 +12,8 @@ type UpdatePaymentParams struct {
 	ID     int
 	Status model.PaymentStatus
 }
+type GetAllByUserIDParams struct {
+	ID     int
+	Limit  int
+	Offset int
+}

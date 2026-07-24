@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"github.com/Daty26/order-system/payment-service/internal/model"
 	"github.com/Daty26/order-system/payment-service/internal/service"
 	"github.com/go-chi/chi/v5"
 	"log/slog"
@@ -97,6 +96,8 @@ func (s *PaymentHandler) UpdatePayment(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, service.ErrInvalidInput):
 			ErrorResponse(w, http.StatusBadRequest, "invalid payment request")
 			s.logger.WarnContext(r.Context(), "incorrect payment request", "error", err)
+		case errors.Is(err, sql.ErrNoRows):
+			ErrorResponse(w, http.StatusNotFound, "payment not found")
 		default:
 			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 			s.logger.ErrorContext(r.Context(), "failed to update the payment", "error", err, "product_id", id)
@@ -169,10 +170,18 @@ func (s *PaymentHandler) DeletePayment(w http.ResponseWriter, r *http.Request) {
 // @Failure 400 {string} string "Couldn't fetch payments"
 // @Router /payments [get]
 func (s *PaymentHandler) GetPayments(w http.ResponseWriter, r *http.Request) {
-	role := r.Context().Value("role")
-	userID := int(r.Context().Value("user_id").(float64))
+	role, ok := r.Context().Value("role").(string)
+	if !ok {
+		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
+		return
+	}
+	userIDRaw, ok := r.Context().Value("user_id").(float64)
+	if !ok {
+		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
+		return
+	}
+	limit, offset, ok := parsePagination(r)
 	if role == "ADMIN" {
-		limit, offset, ok := parsePagination(r)
 		if !ok {
 			ErrorResponse(w, http.StatusBadRequest, "invalid pagination query param")
 			return
@@ -185,7 +194,12 @@ func (s *PaymentHandler) GetPayments(w http.ResponseWriter, r *http.Request) {
 		SuccessPayment(w, http.StatusOK, payments)
 		return
 	}
-	payments, err := s.paymentService.GetAllByUserId(r.Context(), userID)
+	input := service.GetAllByUserIDInput{
+		ID:     int(userIDRaw),
+		Limit:  limit,
+		Offset: offset,
+	}
+	payments, err := s.paymentService.GetAllByUserId(r.Context(), input)
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, "Couldn't fetch orders: "+err.Error())
 		return
