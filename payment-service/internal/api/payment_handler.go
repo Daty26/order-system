@@ -124,12 +124,16 @@ func (s *PaymentHandler) GetPaymentByID(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	payment, err := s.paymentService.GetPaymentByID(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		ErrorResponse(w, http.StatusNotFound, "Can't find payment with specified id ")
-		return
-	}
 	if err != nil {
-		ErrorResponse(w, http.StatusInternalServerError, "Can't fetch payment: "+err.Error())
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			ErrorResponse(w, http.StatusNotFound, "not found")
+		case errors.Is(err, service.ErrInvalidInput):
+			ErrorResponse(w, http.StatusBadRequest, "invalid payment request")
+		default:
+			s.logger.ErrorContext(r.Context(), "failed fetch payment", "error", err, "payment_id", id)
+			ErrorResponse(w, http.StatusInternalServerError, "someting went wrong")
+		}
 		return
 	}
 	SuccessPayment(w, http.StatusOK, payment)

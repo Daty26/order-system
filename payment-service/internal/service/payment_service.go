@@ -54,7 +54,7 @@ func (s *PaymentService) GetAllPayments(ctx context.Context, limit, offset int) 
 }
 
 func (s *PaymentService) GetAllByUserId(ctx context.Context, input GetAllByUserIDInput) ([]model.Payment, error) {
-	if input.ID < 0 {
+	if input.ID <= 0 {
 		return []model.Payment{}, ErrInvalidInput
 	}
 	params := repository.GetAllByUserIDParams{
@@ -66,8 +66,8 @@ func (s *PaymentService) GetAllByUserId(ctx context.Context, input GetAllByUserI
 }
 
 func (s *PaymentService) GetPaymentByID(ctx context.Context, id int) (model.Payment, error) {
-	if id < 0 {
-		return model.Payment{}, errors.New("invalid id")
+	if id <= 0 {
+		return model.Payment{}, ErrInvalidInput
 	}
 	return s.paymentRep.GetByID(ctx, id)
 }

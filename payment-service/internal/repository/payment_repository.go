@@ -115,6 +115,7 @@ func (r *PostgresPaymentRep) GetByID(ctx context.Context, id int) (model.Payment
 		SELECT id, order_id, status, amount_cents, user_id
 		from payments
 		where id=$1
+		ORDER BY id DESC
 `
 	var payment model.Payment
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
@@ -125,7 +126,7 @@ func (r *PostgresPaymentRep) GetByID(ctx context.Context, id int) (model.Payment
 		&payment.UserID,
 	)
 	if err != nil {
-		return model.Payment{}, err
+		return model.Payment{}, fmt.Errorf("query payment by id: %w", err)
 	}
 	return payment, nil
 }
