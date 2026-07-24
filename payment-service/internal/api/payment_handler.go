@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -15,14 +16,15 @@ import (
 
 type PaymentHandler struct {
 	paymentService *service.PaymentService
+	logger         *slog.Logger
 }
 type PaymentRequest struct {
 	OrderID     int   `json:"orderId"`
 	AmountCents int64 `json:"amount_cents"`
 }
 
-func NewRepoPyament(paymentService *service.PaymentService) *PaymentHandler {
-	return &PaymentHandler{paymentService: paymentService}
+func NewPaymentHandler(paymentService *service.PaymentService, logger *slog.Logger) *PaymentHandler {
+	return &PaymentHandler{paymentService: paymentService, logger: logger}
 }
 
 // CreatePayment godoc
@@ -55,6 +57,10 @@ func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, service.ErrInvalidInput):
 			ErrorResponse(w, http.StatusBadRequest, "invalid input")
 		default:
+			h.logger.ErrorContext(r.Context(),
+				"failed to process payment",
+				"error", err,
+			)
 			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		}
 		return

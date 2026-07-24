@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -30,57 +31,29 @@ func main() {
 	defer db.DataDB.Close()
 
 	kafkaBrokers := strings.Split(getEnv("KAFKA_BROKERS", "localhost:9092"), ",")
+
 	producer, err := kafka.NewKafkaProducer(kafkaBrokers)
 	if err != nil {
-		log.Fatalf("couldn't create producer: %v", err)
+		log.Fatalf(" create producer: %v", err)
 	}
 	defer producer.Close()
+
 	orderClient := order.NewClient(
-		getEnv("ORDER_SERVICE_URL", "http://localhost:80"),
-		&http.Client{Timeout: 2 * time.Second})
+		getEnv("ORDER_SERVICE_URL", "http://localhost:8080"),
+		&http.Client{Timeout: 2 * time.Second},
+	)
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+
 	repo := repository.NewPostgresRep(db.DataDB)
 	srv := service.NewPaymentService(repo, producer, orderClient)
-
-	type orderCreated struct {
-		OrderID     int     `json:"order_id"`
-		UserID      int     `json:"user_id"`
-		TotalAmount float64 `json:"total_amount"`
-		Items       []struct {
-			PaymentID int     `json:"payment_id"`
-			Quantity  int     `json:"quantity"`
-			Price     float64 `json:"price"`
-		} `json:"items"`
-	}
-
-	consumeOrderCreated := func(value []byte) {
-		var order orderCreated
-		if err := json.Unmarshal(value, &order); err != nil {
-			log.Println("kafka handler: bad payload:", err)
-			return
-		}
-		if _, err := srv.ProcessPayment(order.OrderID, order.TotalAmount, order.UserID); err != nil {
-			log.Println("kafka handler: process payment failed:", err)
-			return
-		}
-		log.Printf("Processed payment for order %d\n", order.OrderID)
-	}
-	consumer, err := kafka.NewKafkaConsumer(kafkaBrokers, consumeOrderCreated)
-	if err != nil {
-		log.Fatalf("failed to create Kafka consumer: %v", err)
-	}
-	if err = consumer.Consume("order.created"); err != nil {
-		log.Fatalf("failed to start consumer: %v", err)
-	}
-	defer consumer.Close()
-	handler := api.NewRepoPyament(srv)
+	handler := api.NewPaymentHandler(srv, logger)
 
 	r := chi.NewRouter()
 
 	r.Get("/health", func(writer http.ResponseWriter, request *http.Request) {
-		_, err := writer.Write([]byte("payment-service is working"))
-		if err != nil {
-			return
-		}
+		_, _ = writer.Write([]byte("payment-service is working"))
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.AuthMiddleware)
@@ -92,6 +65,7 @@ func main() {
 	})
 
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
+
 	log.Println("starting payment service on port 8081")
 	err = http.ListenAndServe(":8081", r)
 	if err != nil {
