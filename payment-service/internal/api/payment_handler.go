@@ -15,10 +15,6 @@ type PaymentHandler struct {
 	paymentService *service.PaymentService
 	logger         *slog.Logger
 }
-type PaymentRequest struct {
-	OrderID     int   `json:"orderId"`
-	AmountCents int64 `json:"amount_cents"`
-}
 
 func NewPaymentHandler(paymentService *service.PaymentService, logger *slog.Logger) *PaymentHandler {
 	return &PaymentHandler{paymentService: paymentService, logger: logger}
@@ -35,7 +31,6 @@ func NewPaymentHandler(paymentService *service.PaymentService, logger *slog.Logg
 // @Router /payments [post]
 func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 	userID := int(r.Context().Value("user_id").(float64))
-	// TODO don't trust user to enter amount cents
 	var req ProcessPaymentRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
@@ -56,6 +51,7 @@ func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 			h.logger.ErrorContext(r.Context(),
 				"failed to process payment",
 				"error", err,
+				"order_id", input.OrderID,
 			)
 			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		}
@@ -100,7 +96,7 @@ func (s *PaymentHandler) UpdatePayment(w http.ResponseWriter, r *http.Request) {
 			ErrorResponse(w, http.StatusNotFound, "payment not found")
 		default:
 			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
-			s.logger.ErrorContext(r.Context(), "failed to update the payment", "error", err, "product_id", id)
+			s.logger.ErrorContext(r.Context(), "failed to update the payment", "error", err, "payment_id", id)
 		}
 		return
 	}
@@ -185,14 +181,20 @@ func (s *PaymentHandler) GetPayments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	limit, offset, ok := parsePagination(r)
+	if !ok {
+		ErrorResponse(w, http.StatusBadRequest, "invalid pagination query param")
+		return
+	}
 	if role == "ADMIN" {
-		if !ok {
-			ErrorResponse(w, http.StatusBadRequest, "invalid pagination query param")
-			return
-		}
 		payments, err := s.paymentService.GetAllPayments(r.Context(), limit, offset)
 		if err != nil {
-			ErrorResponse(w, http.StatusBadRequest, "Couldn't fetch orders: "+err.Error())
+			switch {
+			case errors.Is(err, service.ErrInvalidInput):
+				ErrorResponse(w, http.StatusBadRequest, "invalid payment request")
+			default:
+				s.logger.ErrorContext(r.Context(), "failed to get payments", "error", err, "user_id", int(userIDRaw))
+				ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
+			}
 			return
 		}
 		SuccessPayment(w, http.StatusOK, payments)
@@ -205,7 +207,12 @@ func (s *PaymentHandler) GetPayments(w http.ResponseWriter, r *http.Request) {
 	}
 	payments, err := s.paymentService.GetAllByUserId(r.Context(), input)
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, "Couldn't fetch orders: "+err.Error())
+		switch {
+		case errors.Is(err, service.ErrInvalidInput):
+			ErrorResponse(w, http.StatusBadRequest, "invalid request")
+		default:
+			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
+		}
 		return
 	}
 	SuccessPayment(w, http.StatusOK, payments)

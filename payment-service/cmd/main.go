@@ -59,7 +59,7 @@ func main() {
 		r.Put("/payments/{id}", handler.UpdatePayment)
 		r.Get("/payments/{id}", handler.GetPaymentByID)
 		r.Post("/payments", handler.CreatePayment)
-		r.Delete("/payments/{id}", handler.DeletePayment)
+		// r.Delete("/payments/{id}", handler.DeletePayment)
 		r.Get("/payments", handler.GetPayments)
 	})
 

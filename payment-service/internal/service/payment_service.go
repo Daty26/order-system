@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/Daty26/order-system/payment-service/internal/kafka"
@@ -73,7 +72,7 @@ func (s *PaymentService) GetPaymentByID(ctx context.Context, id int) (model.Paym
 }
 
 func (s *PaymentService) UpdatePayment(ctx context.Context, input UpdatePaymentInput) (model.Payment, error) {
-	if input.ID < 0 {
+	if input.ID <= 0 {
 		return model.Payment{}, ErrInvalidInput
 	}
 	if input.Status != model.PaymentPending && input.Status != model.PaymentCompleted && input.Status != model.PaymentFailed {

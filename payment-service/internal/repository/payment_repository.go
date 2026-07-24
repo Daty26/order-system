@@ -55,7 +55,7 @@ func (r *PostgresPaymentRep) GetAll(ctx context.Context, limit, offset int) ([]m
 		SELECT id, order_id, status, amount_cents, user_id
 		from payments
 		ORDER BY id DESC
-		LIMIT $1, OFFSET $2
+		LIMIT $1 OFFSET $2
 `
 	rows, err := r.db.QueryContext(ctx, query, limit, offset)
 	if err != nil {
@@ -83,7 +83,7 @@ func (r *PostgresPaymentRep) GetAllByUserId(ctx context.Context, params GetAllBy
 		from payments
 		where user_id = $1
 		ORDER BY id desc
-		LIMIT $2, OFFSET $3
+		LIMIT $2 OFFSET $3
 `
 	rows, err := r.db.QueryContext(ctx, query, params.ID, params.Limit, params.Offset)
 	if err != nil {
@@ -115,7 +115,6 @@ func (r *PostgresPaymentRep) GetByID(ctx context.Context, id int) (model.Payment
 		SELECT id, order_id, status, amount_cents, user_id
 		from payments
 		where id=$1
-		ORDER BY id DESC
 `
 	var payment model.Payment
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
@@ -133,7 +132,12 @@ func (r *PostgresPaymentRep) GetByID(ctx context.Context, id int) (model.Payment
 
 func (r *PostgresPaymentRep) UpdateStatus(ctx context.Context, params UpdatePaymentParams) (model.Payment, error) {
 	var payment model.Payment
-	query := `update payments SET status=$1 where id = $2 AND status = 'PENDING' RETURNING id, order_id, status, amount_cents, user_id`
+	query := `
+		update payments
+		SET status=$1
+		where id = $2 AND status = 'PENDING'
+		RETURNING id, order_id, status, amount_cents, user_id
+`
 	if err := r.db.QueryRowContext(ctx, query, params.Status, params.ID).Scan(
 		&payment.ID,
 		&payment.OrderID,
@@ -141,7 +145,7 @@ func (r *PostgresPaymentRep) UpdateStatus(ctx context.Context, params UpdatePaym
 		&payment.AmountCents,
 		&payment.UserID,
 	); err != nil {
-		return model.Payment{}, fmt.Errorf("update query: %w", err)
+		return model.Payment{}, fmt.Errorf("update payment status: %w", err)
 	}
 	return payment, nil
 }
