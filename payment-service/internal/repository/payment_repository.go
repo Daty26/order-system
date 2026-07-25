@@ -3,9 +3,11 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/Daty26/order-system/payment-service/internal/model"
+	"github.com/lib/pq"
 )
 
 type PaymentRep interface {
@@ -45,7 +47,11 @@ func (r *PostgresPaymentRep) Save(ctx context.Context, params ProcessPaymentPara
 		&payment.AmountCents,
 		&payment.UserID,
 	); err != nil {
-		return model.Payment{}, fmt.Errorf("query insert payment: %w", err)
+		var pgErr *pq.Error
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return model.Payment{}, ErrPaymentAlreadyExists
+		}
+		return model.Payment{}, fmt.Errorf("insert payment: %w", err)
 	}
 	return payment, nil
 }

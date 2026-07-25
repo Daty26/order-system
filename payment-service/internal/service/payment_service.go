@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/Daty26/order-system/payment-service/internal/kafka"
@@ -36,6 +37,9 @@ func (s *PaymentService) ProcessPayment(ctx context.Context, input ProcessPaymen
 	}
 	savedPayment, err := s.paymentRep.Save(ctx, payment)
 	if err != nil {
+		if errors.Is(err, repository.ErrPaymentAlreadyExists) {
+			return model.Payment{}, ErrPaymentAlreadyExists
+		}
 		return model.Payment{}, fmt.Errorf("save payment: %w", err)
 	}
 	savedPaymentJson, err := json.Marshal(savedPayment)

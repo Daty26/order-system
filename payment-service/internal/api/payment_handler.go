@@ -25,7 +25,7 @@ func NewPaymentHandler(paymentService *service.PaymentService, logger *slog.Logg
 // @Description Process a new payment for a given order
 // @Accept  json
 // @Produce  json
-// @Param payment body PaymentRequest true "Payment request"
+// @Param payment body ProcessPaymentRequest true "Payment request"
 // @Success 201 {object} model.Payment
 // @Failure 400 {string} string "Invalid request"
 // @Router /payments [post]
@@ -47,6 +47,8 @@ func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, service.ErrInvalidInput):
 			ErrorResponse(w, http.StatusBadRequest, "invalid input")
+		case errors.Is(err, service.ErrPaymentAlreadyExists):
+			ErrorResponse(w, http.StatusConflict, "payment already exists")
 		default:
 			h.logger.ErrorContext(r.Context(),
 				"failed to process payment",
@@ -62,7 +64,7 @@ func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 
 // UpdatePayment godoc
 // @Summary Update an existing payment
-// @Description Update status and amount of a payment by ID
+// @Description Update status of a payment by ID
 // @Param id path int true "Payment ID"
 // @Accept json
 // @Produce json
@@ -128,7 +130,7 @@ func (s *PaymentHandler) GetPaymentByID(w http.ResponseWriter, r *http.Request) 
 			ErrorResponse(w, http.StatusBadRequest, "invalid payment request")
 		default:
 			s.logger.ErrorContext(r.Context(), "failed fetch payment", "error", err, "payment_id", id)
-			ErrorResponse(w, http.StatusInternalServerError, "someting went wrong")
+			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		}
 		return
 	}
@@ -172,12 +174,12 @@ func (s *PaymentHandler) DeletePayment(w http.ResponseWriter, r *http.Request) {
 func (s *PaymentHandler) GetPayments(w http.ResponseWriter, r *http.Request) {
 	role, ok := r.Context().Value("role").(string)
 	if !ok {
-		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
+		ErrorResponse(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	userIDRaw, ok := r.Context().Value("user_id").(float64)
 	if !ok {
-		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
+		ErrorResponse(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	limit, offset, ok := parsePagination(r)
