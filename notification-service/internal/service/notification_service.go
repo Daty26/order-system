@@ -1,7 +1,9 @@
 package service
 
 import (
-	"errors"
+	"context"
+	"strings"
+
 	"github.com/Daty26/order-system/notification-service/internal/model"
 	"github.com/Daty26/order-system/notification-service/internal/repository"
 )
@@ -14,59 +16,83 @@ func NewNotificationService(repo repository.NotificationRepo) *NotificationServi
 	return &NotificationService{repo: repo}
 }
 
-func (ns *NotificationService) Insert(orderId int, paymentId int, status model.NotificationStatus, userId int, message string) (model.Notification, error) {
-	if status != "PENDING" && status != "SENT" && status != "FAILED" {
-		return model.Notification{}, errors.New("enter right status")
+func (s *NotificationService) Insert(ctx context.Context, input InsertInput) (model.Notification, error) {
+	if !input.Status.IsValid() {
+		return model.Notification{}, ErrInvalidStatus
 	}
-	if len(message) <= 0 {
-		return model.Notification{}, errors.New("message body can't be empty")
+	if strings.TrimSpace(input.Message) == "" {
+		return model.Notification{}, ErrInvalidMessage
 	}
-
-	notrfication := model.Notification{
-		OrderID:   orderId,
-		PaymentID: paymentId,
-		Status:    status,
-		Message:   message,
-		UserID:    userId,
+	if input.OrderID <= 0 || input.PaymentID <= 0 || input.UserID <= 0 {
+		return model.Notification{}, ErrInvalidID
 	}
-	return ns.repo.Insert(notification)
+	params := repository.InsertParams{
+		OrderID:   input.OrderID,
+		PaymentID: input.PaymentID,
+		Status:    input.Status,
+		UserID:    input.UserID,
+		Message:   input.Message,
+	}
+	return s.repo.Insert(ctx, params)
 }
 
-func (ns *NotificationService) GetByID(id int) (model.Notification, error) {
+func (s *NotificationService) GetByID(ctx context.Context, id int) (model.Notification, error) {
 	if id <= 0 {
-		return model.Notification{}, errors.New("incorrect id")
+		return model.Notification{}, ErrInvalidID
 	}
-	return ns.repo.GetByID(id)
-}
-func (ns *NotificationService) GetByStatus(status model.NotificationStatus, userId int) ([]model.Notification, error) {
-	if status != "PENDING" && status != "SENT" && status != "FAILED" {
-		return []model.Notification{}, errors.New("Enter right status")
-	}
-	return ns.repo.GetByStatus(status, userId)
+	return s.repo.GetByID(ctx, id)
 }
 
-func (ns *NotificationService) GetAllByUserID(userId int) ([]model.Notification, error) {
-	if userId < 0 {
-		return []model.Notification{}, errors.New("invalid user id")
+func (s *NotificationService) GetByStatus(ctx context.Context, input GetByStatusInput) ([]model.Notification, error) {
+	if !input.Status.IsValid() {
+		return []model.Notification{}, ErrInvalidStatus
 	}
-	return ns.repo.GetAllByUserID(userId)
-}
-func (ns *NotificationService) GetAll() ([]model.Notification, error) {
-	return ns.repo.GetAll()
-}
-func (ns *NotificationService) UpdateStatusByID(id int, status model.NotificationStatus) (model.Notification, error) {
-	if id <= 0 {
-		return model.Notification{}, errors.New("incorrect id")
+	if input.UserID <= 0 {
+		return []model.Notification{}, ErrInvalidID
 	}
-	if status != "PENDING" && status != "SENT" && status != "FAILED" {
-		return model.Notification{}, errors.New("enter right status")
+
+	params := repository.GetByStatusParams{
+		UserID: input.UserID,
+		Status: input.Status,
+		Limit:  input.Limit,
+		Offset: input.Offset,
 	}
-	return ns.repo.UpdateStatusByID(id, status)
+	return s.repo.GetByStatus(ctx, params)
 }
 
-func (ns *NotificationService) DeleteByID(id int) error {
-	if id <= 0 {
-		return errors.New("incorrect id")
+func (s *NotificationService) GetAllByUserID(ctx context.Context, input GetAllByUserIDInput) ([]model.Notification, error) {
+	if input.UserID <= 0 {
+		return []model.Notification{}, ErrInvalidID
 	}
-	return ns.repo.DeleteByID(id)
+	params := repository.GetAllByUserIDParams{
+		UserID: input.UserID,
+		Limit:  input.Limit,
+		Offset: input.Offset,
+	}
+	return s.repo.GetAllByUserID(ctx, params)
+}
+
+func (ns *NotificationService) GetAll(ctx context.Context, limit, offset int) ([]model.Notification, error) {
+	return ns.repo.GetAll(ctx, limit, offset)
+}
+
+func (ns *NotificationService) UpdateStatus(ctx context.Context, input UpdateStatusInput) (model.Notification, error) {
+	if input.ID <= 0 {
+		return model.Notification{}, ErrInvalidID
+	}
+	if !input.Status.IsValid() {
+		return model.Notification{}, ErrInvalidStatus
+	}
+	params := repository.UpdateStatusParams{
+		ID:     input.ID,
+		Status: input.Status,
+	}
+	return ns.repo.UpdateStatusByID(ctx, params)
+}
+
+func (s *NotificationService) DeleteByID(ctx context.Context, id int) error {
+	if id <= 0 {
+		return ErrInvalidID
+	}
+	return s.repo.DeleteByID(ctx, id)
 }

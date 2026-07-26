@@ -175,7 +175,7 @@ func (r *PostgresNotificationRepo) GetByStatus(ctx context.Context, params GetBy
 	return notifications, nil
 }
 
-func (r *PostgresNotificationRepo) UpdateStatusByID(ctx context.Context, params UpdateStatusByIDParams) (model.Notification, error) {
+func (r *PostgresNotificationRepo) UpdateStatus(ctx context.Context, params UpdateStatusParams) (model.Notification, error) {
 	var notification model.Notification
 	query := `
 		UPDATE notifications

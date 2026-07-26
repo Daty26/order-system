@@ -1,26 +1,26 @@
-package repository
+package service
 
 import "github.com/Daty26/order-system/notification-service/internal/model"
 
-type InsertParams struct {
+type InsertInput struct {
 	OrderID   int
 	PaymentID int
 	Status    model.NotificationStatus
-	Message   string
 	UserID    int
+	Message   string
 }
-type GetAllByUserIDParams struct {
+type GetByStatusInput struct {
 	UserID int
-	Limit  int
-	Offset int
-}
-type GetByStatusParams struct {
 	Status model.NotificationStatus
+	Limit  int
+	Offset int
+}
+type GetAllByUserIDInput struct {
 	UserID int
 	Limit  int
 	Offset int
 }
-type UpdateStatusParams struct {
+type UpdateStatusInput struct {
 	ID     int
 	Status model.NotificationStatus
 }

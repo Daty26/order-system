@@ -19,3 +19,12 @@ type Notification struct {
 	UserID    int                `json:"user_id"`
 	CreatedAt time.Time          `json:"created_at"`
 }
+
+func (s NotificationStatus) IsValid() bool {
+	switch s {
+	case NotificationPending, NotificationSent, NotificationFailed:
+		return true
+	default:
+		return false
+	}
+}
