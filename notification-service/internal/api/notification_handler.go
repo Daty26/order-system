@@ -25,7 +25,7 @@ func NewNotificationHardler(service *service.NotificationService, logger *slog.L
 func (h *NotificationHandler) InsertNotification(w http.ResponseWriter, r *http.Request) {
 	userIDRaw, ok := r.Context().Value("user_id").(float64)
 	if !ok {
-		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
+		ErrorResponse(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	userID := int(userIDRaw)
@@ -44,7 +44,7 @@ func (h *NotificationHandler) InsertNotification(w http.ResponseWriter, r *http.
 	notification, err := h.s.Insert(r.Context(), input)
 	if err != nil {
 		switch {
-		case errors.Is(err, service.ErrInvalidID):
+		case errors.Is(err, service.ErrInvalidStatus):
 			ErrorResponse(w, http.StatusBadRequest, "invalid status")
 		case errors.Is(err, service.ErrInvalidMessage):
 			ErrorResponse(w, http.StatusBadRequest, "invalid message")
@@ -57,7 +57,7 @@ func (h *NotificationHandler) InsertNotification(w http.ResponseWriter, r *http.
 				"error", err,
 				"user_id", userID,
 			)
-			ErrorResponse(w, http.StatusInternalServerError, "something wrong")
+			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		}
 		return
 	}
@@ -67,12 +67,12 @@ func (h *NotificationHandler) InsertNotification(w http.ResponseWriter, r *http.
 func (h *NotificationHandler) GetNotifications(w http.ResponseWriter, r *http.Request) {
 	role, ok := r.Context().Value("role").(string)
 	if !ok {
-		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
+		ErrorResponse(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	userIDRaw, ok := r.Context().Value("user_id").(float64)
 	if !ok {
-		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
+		ErrorResponse(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	userID := int(userIDRaw)
@@ -149,13 +149,21 @@ func (h *NotificationHandler) GetNotificationByID(w http.ResponseWriter, r *http
 func (h *NotificationHandler) GetNotificationsByStatus(w http.ResponseWriter, r *http.Request) {
 	userIDRaw, ok := r.Context().Value("user_id").(float64)
 	if !ok {
-		ErrorResponse(w, http.StatusBadRequest, "unathorized")
+		ErrorResponse(w, http.StatusBadRequest, "unauthorized")
 		return
 	}
 	userID := int(userIDRaw)
+	limit, offset, ok := parsePagination(r)
+	if !ok {
+		ErrorResponse(w, http.StatusBadRequest, "invalid pagination params")
+		return
+	}
+
 	input := service.GetByStatusInput{
 		Status: model.NotificationStatus(chi.URLParam(r, "status")),
 		UserID: userID,
+		Limit:  limit,
+		Offset: offset,
 	}
 	notifications, err := h.s.GetByStatus(r.Context(), input)
 	if err != nil {
@@ -217,7 +225,7 @@ func (h *NotificationHandler) UpdateNotificationStatus(w http.ResponseWriter, r 
 				"error", err,
 				"status", input.Status,
 			)
-			ErrorResponse(w, http.StatusInternalServerError, "something wrong")
+			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		}
 		return
 	}
@@ -227,7 +235,7 @@ func (h *NotificationHandler) UpdateNotificationStatus(w http.ResponseWriter, r 
 func (h *NotificationHandler) DeleteNotificationByID(w http.ResponseWriter, r *http.Request) {
 	role, ok := r.Context().Value("role").(string)
 	if !ok {
-		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
+		ErrorResponse(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	if role != "ADMIN" {
@@ -240,17 +248,20 @@ func (h *NotificationHandler) DeleteNotificationByID(w http.ResponseWriter, r *h
 		return
 	}
 	if err = h.s.DeleteByID(r.Context(), id); err != nil {
-		if errors.Is(err, service.ErrInvalidID) {
+		switch {
+		case errors.Is(err, service.ErrInvalidID):
 			ErrorResponse(w, http.StatusBadRequest, "invalid id")
-			return
+		case errors.Is(err, sql.ErrNoRows):
+			ErrorResponse(w, http.StatusNotFound, "notification not found")
+		default:
+			h.logger.ErrorContext(
+				r.Context(),
+				"failed to delete notification",
+				"error", err,
+				"notification_id", id,
+			)
+			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		}
-		h.logger.ErrorContext(
-			r.Context(),
-			"failed to delete notification",
-			"error", err,
-			"notification_id", id,
-		)
-		ErrorResponse(w, http.StatusInternalServerError, "something wrong")
 	}
 	SuccessResp(w, http.StatusOK, nil)
 }

@@ -56,9 +56,10 @@ func main() {
 		r.Get("/notifications", handler.GetNotifications)
 		r.Get("/notifications/{id}", handler.GetNotificationByID)
 		r.Get("/notifications/status/{status}", handler.GetNotificationsByStatus)
-		r.Put("/notifications/status", handler.UpdateNotificationStatus)
+		r.Put("/notifications/{id}/status", handler.UpdateNotificationStatus)
 		r.Delete("/notifications/{id}", handler.DeleteNotificationByID)
 	})
+
 	if err = http.ListenAndServe(":8083", r); err != nil {
 		logger.Error("failed to start server", "error", err)
 		os.Exit(1)
@@ -80,6 +81,7 @@ func handlePaymentCompleted(
 	var event model.PaymentCreated
 	if err := json.Unmarshal(value, &event); err != nil {
 		logger.Warn("invalid payment.completed event", "error", err)
+		return
 	}
 	input := service.InsertInput{
 		OrderID:   event.OrderID,
@@ -105,5 +107,4 @@ func handlePaymentCompleted(
 		"order_id", notification.OrderID,
 		"payment_id", notification.PaymentID,
 	)
-
 }
