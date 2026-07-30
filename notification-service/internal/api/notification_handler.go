@@ -190,7 +190,7 @@ func (h *NotificationHandler) GetNotificationsByStatus(w http.ResponseWriter, r 
 func (h *NotificationHandler) UpdateNotificationStatus(w http.ResponseWriter, r *http.Request) {
 	role, ok := r.Context().Value("role").(string)
 	if !ok {
-		ErrorResponse(w, http.StatusUnauthorized, "uanthorized")
+		ErrorResponse(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
@@ -262,6 +262,8 @@ func (h *NotificationHandler) DeleteNotificationByID(w http.ResponseWriter, r *h
 			)
 			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		}
+		return
 	}
-	SuccessResp(w, http.StatusOK, nil)
+	w.WriteHeader(http.StatusNoContent)
+	return
 }
