@@ -4,141 +4,253 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"log/slog"
+	"net/http"
+	"strconv"
+
 	"github.com/Daty26/order-system/notification-service/internal/model"
 	"github.com/Daty26/order-system/notification-service/internal/service"
 	"github.com/go-chi/chi/v5"
-	"log"
-	"net/http"
-	"strconv"
 )
 
 type NotificationHandler struct {
-	sv *service.NotificationService
+	s      *service.NotificationService
+	logger *slog.Logger
 }
 
-func NewNotificationHandler(service *service.NotificationService) *NotificationHandler {
-	return &NotificationHandler{sv: service}
+func NewNotificationHardler(service *service.NotificationService, logger *slog.Logger) *NotificationHandler {
+	return &NotificationHandler{s: service, logger: logger}
 }
-func (nh *NotificationHandler) InsertNotification(w http.ResponseWriter, r *http.Request) {
-	userIdFloat := r.Context().Value("user_id").(float64)
-	userId := int(userIdFloat)
 
-	var req struct {
-		OrderID   int                      `json:"order_id"`
-		PaymentID int                      `json:"payment_id"`
-		Status    model.NotificationStatus `json:"status"`
-		Message   string                   `json:"message"`
-	}
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+func (h *NotificationHandler) InsertNotification(w http.ResponseWriter, r *http.Request) {
+	userIDRaw, ok := r.Context().Value("user_id").(float64)
+	if !ok {
+		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
 		return
 	}
-	notification, err := nh.sv.Insert(req.OrderID, req.PaymentID, req.Status, userId, req.Message)
+	userID := int(userIDRaw)
+	var req InsertNotificationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		ErrorResponse(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+	input := service.InsertInput{
+		OrderID:   req.OrderID,
+		PaymentID: req.PaymentID,
+		Status:    model.NotificationStatus(req.Status),
+		Message:   req.Message,
+		UserID:    userID,
+	}
+	notification, err := h.s.Insert(r.Context(), input)
 	if err != nil {
-		log.Println("Couldn't insert notification: " + err.Error())
-		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		switch {
+		case errors.Is(err, service.ErrInvalidID):
+			ErrorResponse(w, http.StatusBadRequest, "invalid status")
+		case errors.Is(err, service.ErrInvalidMessage):
+			ErrorResponse(w, http.StatusBadRequest, "invalid message")
+		case errors.Is(err, service.ErrInvalidID):
+			ErrorResponse(w, http.StatusBadRequest, "invalid id")
+		default:
+			h.logger.ErrorContext(
+				r.Context(),
+				"failed to create notification",
+				"error", err,
+				"user_id", userID,
+			)
+			ErrorResponse(w, http.StatusInternalServerError, "something wrong")
+		}
 		return
 	}
 	SuccessResp(w, http.StatusCreated, notification)
 }
 
-func (nh *NotificationHandler) GetNotifications(w http.ResponseWriter, r *http.Request) {
-	role := r.Context().Value("role").(string)
-	userIdFloat := r.Context().Value("user_id").(float64)
-	userId := int(userIdFloat)
+func (h *NotificationHandler) GetNotifications(w http.ResponseWriter, r *http.Request) {
+	role, ok := r.Context().Value("role").(string)
+	if !ok {
+		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
+		return
+	}
+	userIDRaw, ok := r.Context().Value("user_id").(float64)
+	if !ok {
+		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
+		return
+	}
+	userID := int(userIDRaw)
+	limit, offset, ok := parsePagination(r)
+	if !ok {
+		ErrorResponse(w, http.StatusBadRequest, "invalid pagination")
+		return
+	}
 	if role == "ADMIN" {
-		notifications, err := nh.sv.GetAll()
+		notifications, err := h.s.GetAll(r.Context(), limit, offset)
 		if err != nil {
-			log.Println("Couldn't retrieve notifications: " + err.Error())
-			ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+			h.logger.ErrorContext(
+				r.Context(),
+				"failed to retrieve notifications",
+				"err", err,
+				"user_id", userID,
+			)
+			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 			return
 		}
 		SuccessResp(w, http.StatusOK, notifications)
 		return
 	}
-	notifications, err := nh.sv.GetAllByUserID(userId)
+	input := service.GetAllByUserIDInput{
+		UserID: userID,
+		Limit:  limit,
+		Offset: offset,
+	}
+	notifications, err := h.s.GetAllByUserID(r.Context(), input)
 	if err != nil {
-		log.Println("Couldn't retrieve notifications: " + err.Error())
-		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		switch {
+		case errors.Is(err, service.ErrInvalidID):
+			ErrorResponse(w, http.StatusBadRequest, "invalid id")
+		default:
+			h.logger.ErrorContext(
+				r.Context(),
+				"failed to retrieve notifications",
+				"error", err,
+				"user_id", userID,
+			)
+			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
+		}
 		return
 	}
 	SuccessResp(w, http.StatusOK, notifications)
 	return
 }
 
-func (nh *NotificationHandler) GetNotificationByID(w http.ResponseWriter, r *http.Request) {
+func (h *NotificationHandler) GetNotificationByID(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+		ErrorResponse(w, http.StatusBadRequest, "invalid request")
 		return
 	}
-	notificationByID, err := nh.sv.GetByID(id)
-	if errors.Is(err, sql.ErrNoRows) {
-		ErrorResponse(w, http.StatusNotFound, "Couldn't find notification with such id")
-		return
-	}
+	notificationModel, err := h.s.GetByID(r.Context(), id)
 	if err != nil {
-		log.Println("COuldn't retrieve notification: " + err.Error())
-		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			ErrorResponse(w, http.StatusNotFound, "notification not found")
+		default:
+			h.logger.ErrorContext(
+				r.Context(),
+				"failed to retrieve notification",
+				"error", err,
+				"notification_id", id,
+			)
+			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
+		}
 		return
 	}
-
-	SuccessResp(w, http.StatusOK, notificationByID)
+	SuccessResp(w, http.StatusOK, notificationModel)
 }
-func (nh *NotificationHandler) GetNotificationsByStatus(w http.ResponseWriter, r *http.Request) {
-	userIdFloat := r.Context().Value("user_id").(float64)
-	userId := int(userIdFloat)
-	status := model.NotificationStatus(chi.URLParam(r, "status"))
-	notifications, err := nh.sv.GetByStatus(status, userId)
+
+func (h *NotificationHandler) GetNotificationsByStatus(w http.ResponseWriter, r *http.Request) {
+	userIDRaw, ok := r.Context().Value("user_id").(float64)
+	if !ok {
+		ErrorResponse(w, http.StatusBadRequest, "unathorized")
+		return
+	}
+	userID := int(userIDRaw)
+	input := service.GetByStatusInput{
+		Status: model.NotificationStatus(chi.URLParam(r, "status")),
+		UserID: userID,
+	}
+	notifications, err := h.s.GetByStatus(r.Context(), input)
 	if err != nil {
-		log.Println("Couldn't retrieve notification: " + err.Error())
-		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		switch {
+		case errors.Is(err, service.ErrInvalidStatus):
+			ErrorResponse(w, http.StatusBadRequest, "invalid status")
+		case errors.Is(err, service.ErrInvalidID):
+			ErrorResponse(w, http.StatusBadRequest, "invalid id")
+		default:
+			h.logger.ErrorContext(
+				r.Context(),
+				"failed to retrieve notification by status",
+				"error", err,
+				"user_id", userID,
+				"status", input.Status,
+			)
+			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
+		}
 		return
 	}
 	SuccessResp(w, http.StatusOK, notifications)
 }
-func (nh *NotificationHandler) UpdateNotificationStatusByID(w http.ResponseWriter, r *http.Request) {
-	userRole := r.Context().Value("role")
-	if userRole != "ADMIN" {
-		ErrorResponse(w, http.StatusForbidden, "You don't have permission to update notification")
+
+func (h *NotificationHandler) UpdateNotificationStatus(w http.ResponseWriter, r *http.Request) {
+	role, ok := r.Context().Value("role").(string)
+	if !ok {
+		ErrorResponse(w, http.StatusUnauthorized, "uanthorized")
 		return
 	}
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
+		ErrorResponse(w, http.StatusBadRequest, "invalid id")
 		return
 	}
-	var req struct {
-		Status model.NotificationStatus `json:"status"`
-	}
-	err = json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, http.StatusText(http.StatusBadRequest))
+	if role != "ADMIN" {
+		ErrorResponse(w, http.StatusForbidden, "You don't have permission to update notification")
 		return
 	}
-	notification, err := nh.sv.UpdateStatusByID(id, req.Status)
+	var req UpdateNotificationByStatus
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		ErrorResponse(w, http.StatusBadRequest, "invalid request")
+		return
+	}
+	input := service.UpdateStatusInput{
+		Status: model.NotificationStatus(req.Status),
+		ID:     id,
+	}
+	notification, err := h.s.UpdateStatus(r.Context(), input)
 	if err != nil {
-		log.Println("Couldn't update the status: " + err.Error())
-		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		switch {
+		case errors.Is(err, service.ErrInvalidID):
+			ErrorResponse(w, http.StatusBadRequest, "invalid id")
+		case errors.Is(err, service.ErrInvalidStatus):
+			ErrorResponse(w, http.StatusBadRequest, "invalid status")
+		default:
+			h.logger.ErrorContext(
+				r.Context(),
+				"failed to update notification",
+				"error", err,
+				"status", input.Status,
+			)
+			ErrorResponse(w, http.StatusInternalServerError, "something wrong")
+		}
 		return
 	}
 	SuccessResp(w, http.StatusOK, notification)
 }
-func (nh *NotificationHandler) DeleteNotificationByID(w http.ResponseWriter, r *http.Request) {
-	userRole := r.Context().Value("role")
-	if userRole != "ADMIN" {
+
+func (h *NotificationHandler) DeleteNotificationByID(w http.ResponseWriter, r *http.Request) {
+	role, ok := r.Context().Value("role").(string)
+	if !ok {
+		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
+		return
+	}
+	if role != "ADMIN" {
 		ErrorResponse(w, http.StatusForbidden, "You don't have permission to update notification")
 		return
 	}
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		ErrorResponse(w, http.StatusBadRequest, http.StatusText(http.StatusNotFound))
+		ErrorResponse(w, http.StatusBadRequest, "invalid id")
 		return
 	}
-	if err = nh.sv.DeleteByID(id); err != nil {
-		log.Println("Internal error: " + err.Error())
-		ErrorResponse(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+	if err = h.s.DeleteByID(r.Context(), id); err != nil {
+		if errors.Is(err, service.ErrInvalidID) {
+			ErrorResponse(w, http.StatusBadRequest, "invalid id")
+			return
+		}
+		h.logger.ErrorContext(
+			r.Context(),
+			"failed to delete notification",
+			"error", err,
+			"notification_id", id,
+		)
+		ErrorResponse(w, http.StatusInternalServerError, "something wrong")
 	}
 	SuccessResp(w, http.StatusOK, nil)
 }

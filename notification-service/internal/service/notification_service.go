@@ -72,11 +72,11 @@ func (s *NotificationService) GetAllByUserID(ctx context.Context, input GetAllBy
 	return s.repo.GetAllByUserID(ctx, params)
 }
 
-func (ns *NotificationService) GetAll(ctx context.Context, limit, offset int) ([]model.Notification, error) {
-	return ns.repo.GetAll(ctx, limit, offset)
+func (s *NotificationService) GetAll(ctx context.Context, limit, offset int) ([]model.Notification, error) {
+	return s.repo.GetAll(ctx, limit, offset)
 }
 
-func (ns *NotificationService) UpdateStatus(ctx context.Context, input UpdateStatusInput) (model.Notification, error) {
+func (s *NotificationService) UpdateStatus(ctx context.Context, input UpdateStatusInput) (model.Notification, error) {
 	if input.ID <= 0 {
 		return model.Notification{}, ErrInvalidID
 	}
@@ -87,7 +87,7 @@ func (ns *NotificationService) UpdateStatus(ctx context.Context, input UpdateSta
 		ID:     input.ID,
 		Status: input.Status,
 	}
-	return ns.repo.UpdateStatusByID(ctx, params)
+	return s.repo.UpdateStatus(ctx, params)
 }
 
 func (s *NotificationService) DeleteByID(ctx context.Context, id int) error {

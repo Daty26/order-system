@@ -13,7 +13,7 @@ type NotificationRepo interface {
 	GetAllByUserID(ctx context.Context, params GetAllByUserIDParams) ([]model.Notification, error)
 	GetByID(ctx context.Context, id int) (model.Notification, error)
 	GetByStatus(ctx context.Context, params GetByStatusParams) ([]model.Notification, error)
-	UpdateStatusByID(ctx context.Context, params UpdateStatusByIDParams) (model.Notification, error)
+	UpdateStatus(ctx context.Context, params UpdateStatusParams) (model.Notification, error)
 	DeleteByID(ctx context.Context, id int) error
 	GetAll(ctx context.Context, limit, offset int) ([]model.Notification, error)
 }
@@ -41,7 +41,7 @@ func (r *PostgresNotificationRepo) Insert(ctx context.Context, params InsertPara
 		params.Message,
 		params.UserID,
 	)
-	err := row.Scan(
+	if err := row.Scan(
 		&notification.ID,
 		&notification.OrderID,
 		&notification.PaymentID,
@@ -49,8 +49,7 @@ func (r *PostgresNotificationRepo) Insert(ctx context.Context, params InsertPara
 		&notification.Message,
 		&notification.UserID,
 		&notification.CreatedAt,
-	)
-	if err != nil {
+	); err != nil {
 		return model.Notification{}, fmt.Errorf("insert notification: %w", err)
 	}
 	return notification, nil
@@ -69,7 +68,6 @@ func (r *PostgresNotificationRepo) GetAllByUserID(ctx context.Context, params Ge
 		return []model.Notification{}, fmt.Errorf("query notification: %w", err)
 	}
 	defer rows.Close()
-
 	var notifications []model.Notification
 	for rows.Next() {
 		var notification model.Notification
@@ -96,7 +94,6 @@ func (r *PostgresNotificationRepo) GetAll(ctx context.Context, limit, offset int
 		return []model.Notification{}, fmt.Errorf("query notification: %w", err)
 	}
 	defer rows.Close()
-
 	var notifications []model.Notification
 	for rows.Next() {
 		var notification model.Notification

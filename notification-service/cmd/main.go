@@ -1,8 +1,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
@@ -21,44 +22,33 @@ import (
 func main() {
 	db.InitDB()
 	defer db.DataDB.Close()
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+
 	rep := repository.NewNotificationRepo(db.DataDB)
 	serv := service.NewNotificationService(rep)
-	handler := api.NewNotificationHandler(serv)
+	handler := api.NewNotificationHardler(serv, logger)
 
-	consumePaymentCreated := func(value []byte) {
-		log.Println(string(value))
-		var paymentCreated model.PaymentCreated
-		if err := json.Unmarshal(value, &paymentCreated); err != nil {
-			log.Println("Kafka handler, notification consumer: " + err.Error())
-			return
-		}
-		log.Println(paymentCreated)
-		if _, err := serv.Insert(paymentCreated.OrderID, paymentCreated.PaymentID, model.NotificationSent, paymentCreated.UserID, "payment has been created"); err != nil {
-			log.Println("Kafka process for notification service failed: ", err)
-			return
-		}
-		log.Printf("Notification is created for orderid=%v, paymentid=%v", paymentCreated.OrderID, paymentCreated.PaymentID)
-	}
 	kafkaBrokers := strings.Split(getEnv("KAFKA_BROKERS", "localhost:9092"), ",")
-	consumer, err := kafka.NewKafkaConsumer(kafkaBrokers, consumePaymentCreated)
-	if err != nil {
-		log.Printf("Failed to create new kafka consumer: %v", err.Error())
-		return
-	}
-	go func() {
-		log.Println("Consuming topic payment.completed")
-		if err := consumer.Consume("payment.completed"); err != nil {
-			log.Printf("kafka consumer error: %v", err)
-		}
-	}()
-	defer consumer.Close()
 
+	consumer, err := kafka.NewKafkaConsumer(kafkaBrokers, func(value []byte) {
+		handlePaymentCompleted(value, serv, logger)
+	})
+	if err != nil {
+		logger.Error("failed to create kafka consumer", "error", err)
+		os.Exit(1)
+	}
+
+	defer consumer.Close()
+	if err := consumer.Consume("payment.completed"); err != nil {
+		logger.Error("failed to consume payment.completed", "error", err)
+		os.Exit(1)
+	}
 	r := chi.NewRouter()
 	r.Get("/health", func(writer http.ResponseWriter, request *http.Request) {
-		_, err := writer.Write([]byte("notification-service is working"))
-		if err != nil {
-			return
-		}
+		_, _ = writer.Write([]byte("notification-service is working"))
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.AuthMiddleware)
@@ -66,12 +56,12 @@ func main() {
 		r.Get("/notifications", handler.GetNotifications)
 		r.Get("/notifications/{id}", handler.GetNotificationByID)
 		r.Get("/notifications/status/{status}", handler.GetNotificationsByStatus)
-		r.Put("/notifications/{id}/status", handler.UpdateNotificationStatusByID)
+		r.Put("/notifications/status", handler.UpdateNotificationStatus)
 		r.Delete("/notifications/{id}", handler.DeleteNotificationByID)
 	})
-	err = http.ListenAndServe(":8083", r)
-	if err != nil {
-		log.Fatal(err.Error())
+	if err = http.ListenAndServe(":8083", r); err != nil {
+		logger.Error("failed to start server", "error", err)
+		os.Exit(1)
 	}
 }
 
@@ -80,4 +70,40 @@ func getEnv(key, defaultVal string) string {
 		return val
 	}
 	return defaultVal
+}
+
+func handlePaymentCompleted(
+	value []byte,
+	serv *service.NotificationService,
+	logger *slog.Logger,
+) {
+	var event model.PaymentCreated
+	if err := json.Unmarshal(value, &event); err != nil {
+		logger.Warn("invalid payment.completed event", "error", err)
+	}
+	input := service.InsertInput{
+		OrderID:   event.OrderID,
+		PaymentID: event.PaymentID,
+		Status:    model.NotificationSent,
+		UserID:    event.UserID,
+		Message:   "payment has been completed",
+	}
+	notification, err := serv.Insert(context.Background(), input)
+	if err != nil {
+		logger.Error(
+			"failed to create notification from payment.completed",
+			"error", err,
+			"order_id", event.OrderID,
+			"payment_id", event.PaymentID,
+			"user_id", event.UserID,
+		)
+		return
+	}
+	logger.Info(
+		"notification created",
+		"notification_id", notification.ID,
+		"order_id", notification.OrderID,
+		"payment_id", notification.PaymentID,
+	)
+
 }

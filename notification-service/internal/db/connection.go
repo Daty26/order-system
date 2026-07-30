@@ -17,7 +17,7 @@ func InitDB() {
 		log.Fatalf("Couldn't connect to db: %v", err.Error())
 	}
 	if err = DataDB.Ping(); err != nil {
-		log.Fatalf("Couldn';t ping the db: %v", err)
+		log.Fatalf("Couldn't ping the db: %v", err)
 	}
 	fmt.Println("Connected!")
 }
