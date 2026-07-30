@@ -3,9 +3,11 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/Daty26/order-system/notification-service/internal/model"
+	"github.com/lib/pq"
 )
 
 type NotificationRepo interface {
@@ -50,6 +52,10 @@ func (r *PostgresNotificationRepo) Insert(ctx context.Context, params InsertPara
 		&notification.UserID,
 		&notification.CreatedAt,
 	); err != nil {
+		var pgErr *pq.Error
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return model.Notification{}, ErrNotificationAlreadyExists
+		}
 		return model.Notification{}, fmt.Errorf("insert notification: %w", err)
 	}
 	return notification, nil

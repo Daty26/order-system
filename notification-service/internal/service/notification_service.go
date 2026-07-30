@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/Daty26/order-system/notification-service/internal/model"
@@ -33,7 +34,14 @@ func (s *NotificationService) Insert(ctx context.Context, input InsertInput) (mo
 		UserID:    input.UserID,
 		Message:   input.Message,
 	}
-	return s.repo.Insert(ctx, params)
+	notification, err := s.repo.Insert(ctx, params)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotificationAlreadyExists) {
+			return model.Notification{}, ErrNotificationAlreadyExists
+		}
+		return model.Notification{}, err
+	}
+	return notification, nil
 }
 
 func (s *NotificationService) GetByID(ctx context.Context, id int) (model.Notification, error) {

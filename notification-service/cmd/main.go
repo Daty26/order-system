@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -92,13 +93,22 @@ func handlePaymentCompleted(
 	}
 	notification, err := serv.Insert(context.Background(), input)
 	if err != nil {
-		logger.Error(
-			"failed to create notification from payment.completed",
-			"error", err,
-			"order_id", event.OrderID,
-			"payment_id", event.PaymentID,
-			"user_id", event.UserID,
-		)
+		switch {
+		case errors.Is(err, service.ErrNotificationAlreadyExists):
+			logger.Error(
+				"notification already exists",
+				"payment_id", event.PaymentID,
+				"order_id", event.OrderID,
+			)
+		default:
+			logger.Error(
+				"failed to create notification from payment.completed",
+				"error", err,
+				"order_id", event.OrderID,
+				"payment_id", event.PaymentID,
+				"user_id", event.UserID,
+			)
+		}
 		return
 	}
 	logger.Info(

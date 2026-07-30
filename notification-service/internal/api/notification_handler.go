@@ -50,6 +50,8 @@ func (h *NotificationHandler) InsertNotification(w http.ResponseWriter, r *http.
 			ErrorResponse(w, http.StatusBadRequest, "invalid message")
 		case errors.Is(err, service.ErrInvalidID):
 			ErrorResponse(w, http.StatusBadRequest, "invalid id")
+		case errors.Is(err, service.ErrNotificationAlreadyExists):
+			ErrorResponse(w, http.StatusConflict, "notification already exists")
 		default:
 			h.logger.ErrorContext(
 				r.Context(),
@@ -149,7 +151,7 @@ func (h *NotificationHandler) GetNotificationByID(w http.ResponseWriter, r *http
 func (h *NotificationHandler) GetNotificationsByStatus(w http.ResponseWriter, r *http.Request) {
 	userIDRaw, ok := r.Context().Value("user_id").(float64)
 	if !ok {
-		ErrorResponse(w, http.StatusBadRequest, "unauthorized")
+		ErrorResponse(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	userID := int(userIDRaw)
