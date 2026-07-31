@@ -57,7 +57,7 @@ func main() {
 	// TODO	protect quotes with service-to-service auth
 	r.Post("/products/quotes", handler.GetQuotes)
 
-	err := http.ListenAndServe(":8084", r)
+	err := http.ListenAndServe(":8080", r)
 	if err != nil {
 		log.Fatalf("failed to start an http server: %v", err)
 		return

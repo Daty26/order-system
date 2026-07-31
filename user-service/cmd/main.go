@@ -44,7 +44,8 @@ func main() {
 	r.Post("/user/login", handler.LoginUser)
 	r.Get("/users", handler.GetAll)
 	log.Println("starting user service on port 8085")
-	err := http.ListenAndServe(":8085", r)
+
+	err := http.ListenAndServe(":8080", r)
 	if err != nil {
 		log.Fatalf("failed to start server: %v", err)
 		return

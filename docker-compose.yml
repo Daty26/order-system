@@ -51,7 +51,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       KAFKA_BROKERS: ${KAFKA_BROKER}
     ports:
-      - "8082:8083"
+      - "8082:8080"
     depends_on:
       kafka:
         condition: service_healthy
@@ -78,6 +78,7 @@ services:
   payment-service:
     build: ./payment-service
     environment:
+      ORDER_SERVICE_URL: http://order-service:8080
       DB_HOST: postgres-payment
       DB_PORT: "5432"
       DB_USER: ${POSTGRES_USER}
@@ -86,7 +87,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       KAFKA_BROKERS: ${KAFKA_BROKER}
     ports:
-      - "8081:8081"
+      - "8081:8080"
     depends_on:
       kafka:
         condition: service_healthy
@@ -113,6 +114,7 @@ services:
   order-service:
     build: ./order-service
     environment:
+      INVENTORY_SERVICE_URL: http://inventory-service:8080
       DB_HOST: postgres-order
       DB_PORT: "5432"
       DB_USER: ${POSTGRES_USER}
@@ -156,7 +158,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       KAFKA_BROKERS: ${KAFKA_BROKER}
     ports:
-      - "8084:8084"
+      - "8084:8080"
     depends_on:
       kafka:
         condition: service_healthy
@@ -191,11 +193,10 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       KAFKA_BROKERS: ${KAFKA_BROKER}
     ports:
-      - "8085:8085"
+      - "8085:8080"
     depends_on:
       postgres-user:
         condition: service_healthy
-
 
 
 volumes:

@@ -61,7 +61,7 @@ func main() {
 		r.Delete("/notifications/{id}", handler.DeleteNotificationByID)
 	})
 
-	if err = http.ListenAndServe(":8083", r); err != nil {
+	if err = http.ListenAndServe(":8080", r); err != nil {
 		logger.Error("failed to start server", "error", err)
 		os.Exit(1)
 	}

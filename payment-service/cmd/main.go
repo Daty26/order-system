@@ -66,7 +66,7 @@ func main() {
 	r.Get("/swagger/*", httpSwagger.WrapHandler)
 
 	log.Println("starting payment service on port 8081")
-	err = http.ListenAndServe(":8081", r)
+	err = http.ListenAndServe(":8080", r)
 	if err != nil {
 		log.Fatalf("failed to start server: %v", err)
 	}
