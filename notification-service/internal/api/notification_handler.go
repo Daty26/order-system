@@ -1,9 +1,7 @@
 package api
 
 import (
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -43,24 +41,14 @@ func (h *NotificationHandler) InsertNotification(w http.ResponseWriter, r *http.
 	}
 	notification, err := h.s.Insert(r.Context(), input)
 	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrInvalidStatus):
-			ErrorResponse(w, http.StatusBadRequest, "invalid status")
-		case errors.Is(err, service.ErrInvalidMessage):
-			ErrorResponse(w, http.StatusBadRequest, "invalid message")
-		case errors.Is(err, service.ErrInvalidID):
-			ErrorResponse(w, http.StatusBadRequest, "invalid id")
-		case errors.Is(err, service.ErrNotificationAlreadyExists):
-			ErrorResponse(w, http.StatusConflict, "notification already exists")
-		default:
-			h.logger.ErrorContext(
-				r.Context(),
-				"failed to create notification",
-				"error", err,
-				"user_id", userID,
-			)
-			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
-		}
+		HandleError(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to create notification",
+			"user_id", userID,
+		)
 		return
 	}
 	SuccessResp(w, http.StatusCreated, notification)
@@ -105,22 +93,17 @@ func (h *NotificationHandler) GetNotifications(w http.ResponseWriter, r *http.Re
 	}
 	notifications, err := h.s.GetAllByUserID(r.Context(), input)
 	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrInvalidID):
-			ErrorResponse(w, http.StatusBadRequest, "invalid id")
-		default:
-			h.logger.ErrorContext(
-				r.Context(),
-				"failed to retrieve notifications",
-				"error", err,
-				"user_id", userID,
-			)
-			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
-		}
+		HandleError(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to retrieve notifications",
+			"user_id", userID,
+		)
 		return
 	}
 	SuccessResp(w, http.StatusOK, notifications)
-	return
 }
 
 func (h *NotificationHandler) GetNotificationByID(w http.ResponseWriter, r *http.Request) {
@@ -131,18 +114,14 @@ func (h *NotificationHandler) GetNotificationByID(w http.ResponseWriter, r *http
 	}
 	notificationModel, err := h.s.GetByID(r.Context(), id)
 	if err != nil {
-		switch {
-		case errors.Is(err, sql.ErrNoRows):
-			ErrorResponse(w, http.StatusNotFound, "notification not found")
-		default:
-			h.logger.ErrorContext(
-				r.Context(),
-				"failed to retrieve notification",
-				"error", err,
-				"notification_id", id,
-			)
-			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
-		}
+		HandleError(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to retrieve notification",
+			"notification_id", id,
+		)
 		return
 	}
 	SuccessResp(w, http.StatusOK, notificationModel)
@@ -169,21 +148,14 @@ func (h *NotificationHandler) GetNotificationsByStatus(w http.ResponseWriter, r 
 	}
 	notifications, err := h.s.GetByStatus(r.Context(), input)
 	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrInvalidStatus):
-			ErrorResponse(w, http.StatusBadRequest, "invalid status")
-		case errors.Is(err, service.ErrInvalidID):
-			ErrorResponse(w, http.StatusBadRequest, "invalid id")
-		default:
-			h.logger.ErrorContext(
-				r.Context(),
-				"failed to retrieve notification by status",
-				"error", err,
-				"user_id", userID,
-				"status", input.Status,
-			)
-			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
-		}
+		HandleError(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to retrieve notification by status",
+			"status", input.Status,
+		)
 		return
 	}
 	SuccessResp(w, http.StatusOK, notifications)
@@ -215,20 +187,14 @@ func (h *NotificationHandler) UpdateNotificationStatus(w http.ResponseWriter, r 
 	}
 	notification, err := h.s.UpdateStatus(r.Context(), input)
 	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrInvalidID):
-			ErrorResponse(w, http.StatusBadRequest, "invalid id")
-		case errors.Is(err, service.ErrInvalidStatus):
-			ErrorResponse(w, http.StatusBadRequest, "invalid status")
-		default:
-			h.logger.ErrorContext(
-				r.Context(),
-				"failed to update notification",
-				"error", err,
-				"status", input.Status,
-			)
-			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
-		}
+		HandleError(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to update notification",
+			"status", input.Status,
+		)
 		return
 	}
 	SuccessResp(w, http.StatusOK, notification)
@@ -250,20 +216,14 @@ func (h *NotificationHandler) DeleteNotificationByID(w http.ResponseWriter, r *h
 		return
 	}
 	if err = h.s.DeleteByID(r.Context(), id); err != nil {
-		switch {
-		case errors.Is(err, service.ErrInvalidID):
-			ErrorResponse(w, http.StatusBadRequest, "invalid id")
-		case errors.Is(err, sql.ErrNoRows):
-			ErrorResponse(w, http.StatusNotFound, "notification not found")
-		default:
-			h.logger.ErrorContext(
-				r.Context(),
-				"failed to delete notification",
-				"error", err,
-				"notification_id", id,
-			)
-			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
-		}
+		HandleError(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to delete notification",
+			"notification_id", id,
+		)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
