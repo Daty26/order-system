@@ -25,13 +25,13 @@ func NewOrderService(repo repository.OrderRep, producer *kafka.KafkaProducer, in
 
 func (s *OrderService) CreateOrder(ctx context.Context, actor Actor, input CreatedOrderInput) (model.Orders, error) {
 	if input.UserID <= 0 || len(input.Items) == 0 || len(input.Items) > 100 {
-		return model.Orders{}, ErrInvalidOrder
+		return model.Orders{}, ErrInvalidRequest
 	}
 	productIDs := make([]int, 0, len(input.Items))
 
 	for _, item := range input.Items {
 		if item.ProductID <= 0 || item.Quantity <= 0 {
-			return model.Orders{}, ErrInvalidOrder
+			return model.Orders{}, ErrInvalidRequest
 		}
 		productIDs = append(productIDs, item.ProductID)
 	}
@@ -113,14 +113,14 @@ func (s *OrderService) GetOrders(ctx context.Context, actor Actor, limit, offset
 
 func (s *OrderService) GetOrdersByUserId(ctx context.Context, userID, limit, offset int) ([]model.Orders, error) {
 	if userID <= 0 {
-		return []model.Orders{}, ErrInvalidOrder
+		return []model.Orders{}, ErrInvalidRequest
 	}
 	return s.repo.GetAllByUserID(ctx, userID, limit, offset)
 }
 
 func (s *OrderService) GetOrderByID(ctx context.Context, actor Actor, id int) (model.Orders, error) {
 	if id <= 0 || actor.UserID <= 0 {
-		return model.Orders{}, ErrInvalidOrder
+		return model.Orders{}, ErrInvalidRequest
 	}
 	order, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -150,7 +150,7 @@ func (s *OrderService) DeleteOrder(ctx context.Context, actor Actor, id int) err
 		return ErrForbiddenOrder
 	}
 	if id <= 0 || actor.UserID <= 0 {
-		return ErrInvalidOrder
+		return ErrInvalidRequest
 	}
 	_, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -161,7 +161,7 @@ func (s *OrderService) DeleteOrder(ctx context.Context, actor Actor, id int) err
 
 func (s *OrderService) CancelOrder(ctx context.Context, actor Actor, orderID int) (model.Orders, error) {
 	if orderID <= 0 || actor.UserID <= 0 {
-		return model.Orders{}, ErrInvalidOrder
+		return model.Orders{}, ErrInvalidRequest
 	}
 	order, err := s.repo.GetByID(ctx, orderID)
 	if err != nil {

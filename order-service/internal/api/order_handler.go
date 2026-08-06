@@ -1,9 +1,7 @@
 package api
 
 import (
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -42,17 +40,14 @@ func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 	orders, err := h.service.GetOrders(r.Context(), actor, limit, offset)
 
 	if err != nil {
-		if errors.Is(err, service.ErrInvalidOrder) {
-			ErrorResponse(w, http.StatusBadRequest, "invalid order request")
-			return
-		}
-		h.logger.ErrorContext(r.Context(), "failed to get orders",
-			"error", err,
+		HandleErrors(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to get orders",
 			"user_id", actor.UserID,
-			"role", actor.Role,
 		)
-
-		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
 	resp := ToOrderResponses(orders)
@@ -82,20 +77,15 @@ func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 
 	order, err := h.service.GetOrderByID(r.Context(), actor, id)
 	if err != nil {
-		switch {
-		case errors.Is(err, sql.ErrNoRows):
-			ErrorResponse(w, http.StatusNotFound, "order not found")
-		case errors.Is(err, service.ErrInvalidOrder):
-			ErrorResponse(w, http.StatusBadRequest, "invalid id")
-		case errors.Is(err, service.ErrForbiddenOrder):
-			ErrorResponse(w, http.StatusForbidden, "you are not allowed to acces this order")
-		default:
-			h.logger.ErrorContext(r.Context(), "failed to get order by id",
-				"error", err,
-				"order_id", id,
-			)
-			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
-		}
+		HandleErrors(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to get order by id",
+			"id", id,
+			"actor_id", actor.UserID,
+		)
 		return
 	}
 	resp := ToOrderResponse(order)
@@ -197,22 +187,14 @@ func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 
 	err = h.service.DeleteOrder(r.Context(), actor, id)
 	if err != nil {
-		switch {
-		case errors.Is(err, sql.ErrNoRows):
-			ErrorResponse(w, http.StatusNotFound, "order not found")
-		case errors.Is(err, service.ErrInvalidOrder):
-			ErrorResponse(w, http.StatusBadRequest, "invalid order request")
-		case errors.Is(err, service.ErrForbiddenOrder):
-			ErrorResponse(w, http.StatusForbidden, "you are not allowed to delete order")
-		default:
-
-			h.logger.ErrorContext(
-				r.Context(), "failed to delete order",
-				"error", err,
-				"order_id", id,
-			)
-			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
-		}
+		HandleErrors(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to delete order",
+			"order_id", id,
+		)
 		return
 	}
 	SuccessResp(w, http.StatusOK, nil)
@@ -230,7 +212,7 @@ func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request) {
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	actor, ok := actorFromContext(r)
 	if !ok {
-		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
+		ErrorResponse(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	var req CreatedOrderRequest
@@ -252,18 +234,14 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	createdOrder, err := h.service.CreateOrder(r.Context(), actor, input)
 	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrInvalidOrder):
-			ErrorResponse(w, http.StatusBadRequest, "invalid request")
-		case errors.Is(err, service.ErrForbiddenOrder):
-			ErrorResponse(w, http.StatusForbidden, "you are not allowed to create order")
-		default:
-			h.logger.ErrorContext(r.Context(), "failed to create order",
-				"error", err,
-				"user_id", actor.UserID,
-			)
-			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
-		}
+		HandleErrors(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to create order",
+			"user_id", actor.UserID,
+		)
 		return
 	}
 	SuccessResp(w, http.StatusCreated, ToOrderResponse(createdOrder))
@@ -282,24 +260,15 @@ func (h *OrderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	order, err := h.service.CancelOrder(r.Context(), actor, orderID)
 	if err != nil {
-		switch {
-		case errors.Is(err, sql.ErrNoRows):
-			ErrorResponse(w, http.StatusNotFound, "order not found")
-		case errors.Is(err, service.ErrInvalidOrder):
-			ErrorResponse(w, http.StatusBadRequest, "invalid order")
-		case errors.Is(err, service.ErrForbiddenOrder):
-			ErrorResponse(w, http.StatusForbidden, "you are not allowed to cancel this order")
-		case errors.Is(err, service.ErrOrderCannotBeCanceled):
-			ErrorResponse(w, http.StatusConflict, "order cannot be cancelled")
-		default:
-			h.logger.ErrorContext(
-				r.Context(), "failed to cancel the order",
-				"error", err,
-				"order_id", orderID,
-				"user_id", actor.UserID,
-			)
-			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
-		}
+		HandleErrors(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to cancel the order",
+			"order_id", orderID,
+			"user_id", actor.UserID,
+		)
 		return
 	}
 	SuccessResp(w, http.StatusOK, ToOrderResponse(order))
