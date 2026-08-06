@@ -255,7 +255,7 @@ func (h *OrderHandler) CancelOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	actor, ok := actorFromContext(r)
 	if !ok {
-		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
+		ErrorResponse(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	order, err := h.service.CancelOrder(r.Context(), actor, orderID)

@@ -44,19 +44,14 @@ func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 	}
 	payment, err := h.paymentService.ProcessPayment(r.Context(), input)
 	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrInvalidInput):
-			ErrorResponse(w, http.StatusBadRequest, "invalid input")
-		case errors.Is(err, service.ErrPaymentAlreadyExists):
-			ErrorResponse(w, http.StatusConflict, "payment already exists")
-		default:
-			h.logger.ErrorContext(r.Context(),
-				"failed to process payment",
-				"error", err,
-				"order_id", input.OrderID,
-			)
-			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
-		}
+		HandleErrors(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to process payment",
+			"order_id", input.OrderID,
+		)
 		return
 	}
 	SuccessPayment(w, http.StatusCreated, payment)
@@ -73,7 +68,7 @@ func (h *PaymentHandler) CreatePayment(w http.ResponseWriter, r *http.Request) {
 // @Failure 404 {string} string "Payment not found"
 // @Failure 500 {string} string "Couldn't update payment"
 // @Router /payments/{id} [put]
-func (s *PaymentHandler) UpdatePayment(w http.ResponseWriter, r *http.Request) {
+func (h *PaymentHandler) UpdatePayment(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, "Invalid id type")
@@ -88,18 +83,16 @@ func (s *PaymentHandler) UpdatePayment(w http.ResponseWriter, r *http.Request) {
 		ID:     id,
 		Status: req.Status,
 	}
-	payment, err := s.paymentService.UpdatePayment(r.Context(), input)
+	payment, err := h.paymentService.UpdatePayment(r.Context(), input)
 	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrInvalidInput):
-			ErrorResponse(w, http.StatusBadRequest, "invalid payment request")
-			s.logger.WarnContext(r.Context(), "incorrect payment request", "error", err)
-		case errors.Is(err, sql.ErrNoRows):
-			ErrorResponse(w, http.StatusNotFound, "payment not found")
-		default:
-			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
-			s.logger.ErrorContext(r.Context(), "failed to update the payment", "error", err, "payment_id", id)
-		}
+		HandleErrors(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to update payment",
+			"payment_id", id,
+		)
 		return
 	}
 	SuccessPayment(w, http.StatusOK, payment)
@@ -115,23 +108,22 @@ func (s *PaymentHandler) UpdatePayment(w http.ResponseWriter, r *http.Request) {
 // @Failure 404 {string} string "Payment not found"
 // @Failure 500 {string} string "Could not fetch payment"
 // @Router /payments/{id} [get]
-func (s *PaymentHandler) GetPaymentByID(w http.ResponseWriter, r *http.Request) {
+func (h *PaymentHandler) GetPaymentByID(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, "invalid id")
 		return
 	}
-	payment, err := s.paymentService.GetPaymentByID(r.Context(), id)
+	payment, err := h.paymentService.GetPaymentByID(r.Context(), id)
 	if err != nil {
-		switch {
-		case errors.Is(err, sql.ErrNoRows):
-			ErrorResponse(w, http.StatusNotFound, "not found")
-		case errors.Is(err, service.ErrInvalidInput):
-			ErrorResponse(w, http.StatusBadRequest, "invalid payment request")
-		default:
-			s.logger.ErrorContext(r.Context(), "failed fetch payment", "error", err, "payment_id", id)
-			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
-		}
+		HandleErrors(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to get order by id",
+			"payment_id", id,
+		)
 		return
 	}
 	SuccessPayment(w, http.StatusOK, payment)
@@ -146,19 +138,23 @@ func (s *PaymentHandler) GetPaymentByID(w http.ResponseWriter, r *http.Request) 
 // @Failure 404 {string} string "Payment not found"
 // @Failure 500 {string} string "Couldn't delete payment"
 // @Router /payments/{id} [delete]
-func (s *PaymentHandler) DeletePayment(w http.ResponseWriter, r *http.Request) {
+func (h *PaymentHandler) DeletePayment(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, "Invalid id type")
 		return
 	}
-	err = s.paymentService.DeletePayment(r.Context(), id)
-	if errors.Is(err, sql.ErrNoRows) {
-		ErrorResponse(w, http.StatusNotFound, "no payment with such id")
-		return
-	}
+	err = h.paymentService.DeletePayment(r.Context(), id)
+
 	if err != nil {
-		ErrorResponse(w, http.StatusInternalServerError, "Couldn't delete the payment")
+		HandleErrors(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to delete payment",
+			"payment_id", id,
+		)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -171,7 +167,7 @@ func (s *PaymentHandler) DeletePayment(w http.ResponseWriter, r *http.Request) {
 // @Success 200 {array} model.Payment
 // @Failure 400 {string} string "Couldn't fetch payments"
 // @Router /payments [get]
-func (s *PaymentHandler) GetPayments(w http.ResponseWriter, r *http.Request) {
+func (h *PaymentHandler) GetPayments(w http.ResponseWriter, r *http.Request) {
 	role, ok := r.Context().Value("role").(string)
 	if !ok {
 		ErrorResponse(w, http.StatusUnauthorized, "unauthorized")
@@ -188,15 +184,17 @@ func (s *PaymentHandler) GetPayments(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if role == "ADMIN" {
-		payments, err := s.paymentService.GetAllPayments(r.Context(), limit, offset)
+		payments, err := h.paymentService.GetAllPayments(r.Context(), limit, offset)
 		if err != nil {
-			switch {
-			case errors.Is(err, service.ErrInvalidInput):
-				ErrorResponse(w, http.StatusBadRequest, "invalid payment request")
-			default:
-				s.logger.ErrorContext(r.Context(), "failed to get payments", "error", err, "user_id", int(userIDRaw))
-				ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
-			}
+			HandleErrors(
+				w,
+				r,
+				h.logger,
+				err,
+				"failed to get payments",
+				"user_id", userIDRaw,
+			)
+
 			return
 		}
 		SuccessPayment(w, http.StatusOK, payments)
@@ -207,14 +205,17 @@ func (s *PaymentHandler) GetPayments(w http.ResponseWriter, r *http.Request) {
 		Limit:  limit,
 		Offset: offset,
 	}
-	payments, err := s.paymentService.GetAllByUserId(r.Context(), input)
+	payments, err := h.paymentService.GetAllByUserId(r.Context(), input)
 	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrInvalidInput):
-			ErrorResponse(w, http.StatusBadRequest, "invalid request")
-		default:
-			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
-		}
+		HandleErrors(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to get payments",
+			""
+		)
+
 		return
 	}
 	SuccessPayment(w, http.StatusOK, payments)
