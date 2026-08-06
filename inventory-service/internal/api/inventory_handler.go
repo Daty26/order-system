@@ -1,9 +1,7 @@
 package api
 
 import (
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -21,26 +19,27 @@ func NewInventoryHandler(serv *service.InventoryService, logger *slog.Logger) *I
 	return &InventoryHandler{serv: serv, logger: logger}
 }
 
-func (ih *InventoryHandler) GetAllProducts(w http.ResponseWriter, r *http.Request) {
+func (h *InventoryHandler) GetAllProducts(w http.ResponseWriter, r *http.Request) {
 	limit, offset, ok := parsePagination(r)
 	if !ok {
 		ErrorResponse(w, http.StatusBadRequest, "invalid pagination params")
 		return
 	}
-	products, err := ih.serv.GetAll(r.Context(), limit, offset)
+	products, err := h.serv.GetAll(r.Context(), limit, offset)
 	if err != nil {
-		ih.logger.ErrorContext(
-			r.Context(),
+		HandleErrors(
+			w,
+			r,
+			h.logger,
+			err,
 			"failed to get all products",
-			"error", err,
 		)
-		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
 	SuccessResponse(w, http.StatusOK, ToProductResponses(products))
 }
 
-func (ih *InventoryHandler) InsertProduct(w http.ResponseWriter, r *http.Request) {
+func (h *InventoryHandler) InsertProduct(w http.ResponseWriter, r *http.Request) {
 	if !isAdmin(r) {
 		ErrorResponse(w, http.StatusForbidden, "you are not allowed to add products")
 		return
@@ -56,25 +55,24 @@ func (ih *InventoryHandler) InsertProduct(w http.ResponseWriter, r *http.Request
 		Quantity:   req.Quantity,
 		PriceCents: req.PriceCents,
 	}
-	productCreated, err := ih.serv.InsertProduct(r.Context(), insertInput)
+	productCreated, err := h.serv.InsertProduct(r.Context(), insertInput)
 	if err != nil {
-		if errors.Is(err, service.ErrInvalidInput) {
-			ErrorResponse(w, http.StatusBadRequest, "invalid input")
-			return
-		}
-		ih.logger.ErrorContext(
-			r.Context(),
+		HandleErrors(
+			w,
+			r,
+			h.logger,
+			err,
 			"failed to insert product",
-			"error", err,
 			"product_name", insertInput.Name,
+			"product_quantity", insertInput.Quantity,
+			"product_price_cents", insertInput.PriceCents,
 		)
-		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
 	SuccessResponse(w, http.StatusCreated, ToProductResponse(productCreated))
 }
 
-func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Request) {
+func (h *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, "invalid id param")
@@ -96,28 +94,22 @@ func (ih *InventoryHandler) UpdateQuantity(w http.ResponseWriter, r *http.Reques
 		ID:       id,
 		Quantity: req.Quantity,
 	}
-	productModel, err := ih.serv.UpdateQuantity(r.Context(), input)
+	productModel, err := h.serv.UpdateQuantity(r.Context(), input)
 	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrInvalidInput):
-			ErrorResponse(w, http.StatusBadRequest, "invalid input")
-		case errors.Is(err, sql.ErrNoRows):
-			ErrorResponse(w, http.StatusNotFound, "product not found")
-		default:
-			ih.logger.ErrorContext(
-				r.Context(),
-				"failed to update quantity",
-				"error", err,
-				"product_id", id,
-			)
-			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
-		}
+		HandleErrors(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to update quantity",
+			"product_id", id,
+		)
 		return
 	}
 	SuccessResponse(w, http.StatusOK, ToProductResponse(productModel))
 }
 
-func (ih *InventoryHandler) UpdatePrice(w http.ResponseWriter, r *http.Request) {
+func (h *InventoryHandler) UpdatePrice(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		ErrorResponse(w, http.StatusBadRequest, "invalid id param")
@@ -139,22 +131,16 @@ func (ih *InventoryHandler) UpdatePrice(w http.ResponseWriter, r *http.Request) 
 		ID:         id,
 		PriceCents: req.PriceCents,
 	}
-	priceModel, err := ih.serv.UpdatePrice(r.Context(), input)
+	priceModel, err := h.serv.UpdatePrice(r.Context(), input)
 	if err != nil {
-		switch {
-		case errors.Is(err, service.ErrInvalidInput):
-			ErrorResponse(w, http.StatusBadRequest, "invalid input")
-		case errors.Is(err, sql.ErrNoRows):
-			ErrorResponse(w, http.StatusNotFound, "product not found")
-		default:
-			ih.logger.ErrorContext(
-				r.Context(),
-				"failed to update price",
-				"error", err,
-				"product_id", id,
-			)
-			ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
-		}
+		HandleErrors(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to update the price",
+			"product_id", id,
+		)
 		return
 	}
 	SuccessResponse(w, http.StatusOK, ToProductResponse(priceModel))
@@ -171,17 +157,14 @@ func (h *InventoryHandler) GetQuotes(w http.ResponseWriter, r *http.Request) {
 	}
 	productQuotes, err := h.serv.GetQuotes(r.Context(), input)
 	if err != nil {
-		if errors.Is(err, service.ErrInvalidInput) {
-			ErrorResponse(w, http.StatusBadRequest, "invalid input")
-			return
-		}
-		h.logger.ErrorContext(
-			r.Context(),
+		HandleErrors(
+			w,
+			r,
+			h.logger,
+			err,
 			"failed to get product quotes",
-			"error", err,
 			"product_ids", req.IDs,
 		)
-		ErrorResponse(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
 	SuccessResponse(w, http.StatusOK, ToQuoteProductReponses(productQuotes))
