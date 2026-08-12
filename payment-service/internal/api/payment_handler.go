@@ -213,9 +213,8 @@ func (h *PaymentHandler) GetPayments(w http.ResponseWriter, r *http.Request) {
 			h.logger,
 			err,
 			"failed to get payments",
-			""
+			"user_id", userIDRaw,
 		)
-
 		return
 	}
 	SuccessPayment(w, http.StatusOK, payments)

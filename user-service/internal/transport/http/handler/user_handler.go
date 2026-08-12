@@ -42,24 +42,13 @@ func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 	userSummaryModel, token, err := h.service.LoginUser(r.Context(), input)
 	if err != nil {
-		if errors.Is(err, service.ErrInvalidCredentials) {
-			transport_http_response.ErrorJSON(
-				w,
-				http.StatusUnauthorized,
-				"invalid credentials",
-			)
-			return
-		}
-		h.logger.ErrorContext(
-			r.Context(),
-			"failed to login user",
-			"error", err,
-		)
-
-		transport_http_response.ErrorJSON(
+		HandleErrors(
 			w,
-			http.StatusInternalServerError,
-			"something went wrong",
+			r,
+			h.logger,
+			err,
+			"failed to login user",
+			"identifier", input.Identifier,
 		)
 		return
 	}
@@ -88,16 +77,14 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	userSummary, err := h.service.CreateUser(r.Context(), input)
 	if err != nil {
-		if errors.Is(err, service.ErrInvalidUserInput) {
-			transport_http_response.ErrorJSON(w, http.StatusBadRequest, "invalid req body")
-			return
-		}
-		if errors.Is(err, service.ErrUserAlreadyExists) {
-			transport_http_response.ErrorJSON(w, http.StatusConflict, "user already exists")
-			return
-		}
-		h.logger.ErrorContext(r.Context(), "failed to create user", "error", err)
-		transport_http_response.ErrorJSON(w, http.StatusInternalServerError, "something went wrong")
+		HandleErrors(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to create user",
+			"username", input.Username,
+		)
 		return
 	}
 	transport_http_response.SuccessJSON(w, http.StatusCreated, userSummary)
@@ -106,16 +93,19 @@ func (h *UserHandler) Me(w http.ResponseWriter, r *http.Request) {
 	id := r.Context().Value("user_id").(int)
 	user, err := h.service.GetByID(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, service.ErrNotFound) {
-			transport_http_response.ErrorJSON(w, http.StatusNotFound, "user not found")
-			return
-		}
-		h.logger.ErrorContext(r.Context(), "failed to get me", "error", err)
-		transport_http_response.ErrorJSON(w, http.StatusInternalServerError, "something went wrong")
+		HandleErrors(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to identify myself",
+			"user_id", id,
+		)
 		return
 	}
 	transport_http_response.SuccessJSON(w, http.StatusOK, user)
 }
+
 func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	limit, offset, ok := parsePagination(r)
 	if !ok {
@@ -124,8 +114,15 @@ func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	}
 	users, err := h.service.GetAll(r.Context(), limit, offset)
 	if err != nil {
-		h.logger.ErrorContext(r.Context(), "failed to get all users", "error", err)
-		transport_http_response.ErrorJSON(w, http.StatusBadRequest, "something went wrong")
+		HandleErrors(
+			w,
+			r,
+			h.logger,
+			err,
+			"failed to get all",
+			"limit", limit,
+			"offset", offset,
+		)
 		return
 	}
 	transport_http_response.SuccessJSON(w, http.StatusOK, users)
