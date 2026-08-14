@@ -36,9 +36,7 @@ func (h *OrderHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 		ErrorResponse(w, http.StatusBadRequest, "invalid pagination params")
 		return
 	}
-
 	orders, err := h.service.GetOrders(r.Context(), actor, limit, offset)
-
 	if err != nil {
 		HandleErrors(
 			w,
@@ -74,7 +72,6 @@ func (h *OrderHandler) GetOrderByID(w http.ResponseWriter, r *http.Request) {
 		ErrorResponse(w, http.StatusUnauthorized, "unathorized")
 		return
 	}
-
 	order, err := h.service.GetOrderByID(r.Context(), actor, id)
 	if err != nil {
 		HandleErrors(

@@ -1,9 +1,7 @@
 package api
 
 import (
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"github.com/Daty26/order-system/payment-service/internal/service"
 	"github.com/go-chi/chi/v5"
 	"log/slog"

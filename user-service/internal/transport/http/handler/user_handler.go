@@ -2,7 +2,6 @@ package transport_http_handler
 
 import (
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 

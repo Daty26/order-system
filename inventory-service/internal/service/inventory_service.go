@@ -49,7 +49,6 @@ func (s *InventoryService) InsertProduct(ctx context.Context, input InsertProduc
 }
 
 func (is *InventoryService) UpdatePrice(ctx context.Context, input UpdateProductInput) (model.Product, error) {
-	// TODO decide if free products are allowed
 	if input.ID <= 0 || input.PriceCents <= 0 {
 		return model.Product{}, ErrInvalidInput
 	}

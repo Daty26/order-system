@@ -7,16 +7,16 @@ import (
 )
 
 type Response struct {
-	Data  interface{} `json:"data"`
-	Error string      `json:"error"`
+	Data  any    `json:"data"`
+	Error string `json:"error"`
 }
 
-func SuccessResponse(w http.ResponseWriter, status int, data interface{}) {
+func SuccessResponse(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	err := json.NewEncoder(w).Encode(Response{Data: data})
 	if err != nil {
-		log.Printf("Couldn't encode the data: %s", err.Error())
+		log.Printf("failed to encode the data: %s", err.Error())
 		return
 	}
 }
@@ -25,7 +25,7 @@ func ErrorResponse(w http.ResponseWriter, status int, error string) {
 	w.WriteHeader(status)
 	err := json.NewEncoder(w).Encode(Response{Error: error})
 	if err != nil {
-		log.Printf("Couldn't encode the error: %s", err.Error())
+		log.Printf("failed to encode the error: %s", err.Error())
 		return
 	}
 }
