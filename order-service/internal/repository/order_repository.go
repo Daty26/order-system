@@ -10,13 +10,13 @@ import (
 )
 
 type OrderRep interface {
-	Create(ctx context.Context, order model.Orders) (model.Orders, error)
-	GetAll(ctx context.Context, limit, offset int) ([]model.Orders, error)
-	GetByID(ctx context.Context, id int) (model.Orders, error)
+	Create(ctx context.Context, order model.Order) (model.Order, error)
+	GetAll(ctx context.Context, limit, offset int) ([]model.Order, error)
+	GetByID(ctx context.Context, id int) (model.Order, error)
 	// Update(ctx context.Context, order model.Orders) (model.Orders, error)
 	Delete(ctx context.Context, id int) error
-	GetAllByUserID(ctx context.Context, userId, limit, offset int) ([]model.Orders, error)
-	Cancel(ctx context.Context, id int) (model.Orders, error)
+	GetAllByUserID(ctx context.Context, userId, limit, offset int) ([]model.Order, error)
+	Cancel(ctx context.Context, id int) (model.Order, error)
 }
 type PostgresOrderRepo struct {
 	db *sql.DB
@@ -26,10 +26,10 @@ func NewPostgresRepo(db *sql.DB) *PostgresOrderRepo {
 	return &PostgresOrderRepo{db: db}
 }
 
-func (r *PostgresOrderRepo) Create(ctx context.Context, order model.Orders) (model.Orders, error) {
+func (r *PostgresOrderRepo) Create(ctx context.Context, order model.Order) (model.Order, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return model.Orders{}, fmt.Errorf("begin transaction: %w", err)
+		return model.Order{}, fmt.Errorf("begin transaction: %w", err)
 	}
 	defer func() {
 		_ = tx.Rollback()
@@ -42,7 +42,7 @@ func (r *PostgresOrderRepo) Create(ctx context.Context, order model.Orders) (mod
 	`
 	err = tx.QueryRowContext(ctx, insertOrder, order.UserID, order.Status, order.TotalAmountCents).Scan(&order.OrderID, &order.CreatedAt)
 	if err != nil {
-		return model.Orders{}, fmt.Errorf("insert order: %w", err)
+		return model.Order{}, fmt.Errorf("insert order: %w", err)
 	}
 	const insertItem = `
 		INSERT INTO order_items (
@@ -55,17 +55,17 @@ func (r *PostgresOrderRepo) Create(ctx context.Context, order model.Orders) (mod
 		item := &order.Items[i]
 		err := tx.QueryRowContext(ctx, insertItem, order.OrderID, item.ProductID, item.Quantity, item.UnitPriceCents).Scan(&item.ID)
 		if err != nil {
-			return model.Orders{}, fmt.Errorf("insert order item for product %d: %w", item.ProductID, err)
+			return model.Order{}, fmt.Errorf("insert order item for product %d: %w", item.ProductID, err)
 		}
 		item.OrderID = order.OrderID
 	}
 	if err := tx.Commit(); err != nil {
-		return model.Orders{}, fmt.Errorf("commit order transaction: %w", err)
+		return model.Order{}, fmt.Errorf("commit order transaction: %w", err)
 	}
 	return order, nil
 }
 
-func (r *PostgresOrderRepo) GetAll(ctx context.Context, limit, offset int) ([]model.Orders, error) {
+func (r *PostgresOrderRepo) GetAll(ctx context.Context, limit, offset int) ([]model.Order, error) {
 	const selectOrdersQuery = `
 		SELECT id, user_id, status, total_amount_cents, created_at
 		FROM orders
@@ -74,18 +74,19 @@ func (r *PostgresOrderRepo) GetAll(ctx context.Context, limit, offset int) ([]mo
 	`
 	rows, err := r.db.QueryContext(ctx, selectOrdersQuery, limit, offset)
 	if err != nil {
-		return []model.Orders{}, fmt.Errorf("select orders: %w", err)
+		return []model.Order{}, fmt.Errorf("select orders: %w", err)
 	}
+
 	defer rows.Close()
-	var orders = make([]model.Orders, 0)
+	var orders = make([]model.Order, 0)
 	orderIDs := make([]int, 0)
 	orderIndex := make(map[int]int)
 
 	for rows.Next() {
-		var order model.Orders
+		var order model.Order
 		err = rows.Scan(&order.OrderID, &order.UserID, &order.Status, &order.TotalAmountCents, &order.CreatedAt)
 		if err != nil {
-			return []model.Orders{}, fmt.Errorf("scan order: %w", err)
+			return []model.Order{}, fmt.Errorf("scan order: %w", err)
 		}
 
 		order.Items = make([]model.OrderItem, 0)
@@ -108,7 +109,7 @@ func (r *PostgresOrderRepo) GetAll(ctx context.Context, limit, offset int) ([]mo
 	`
 	itemrows, err := r.db.QueryContext(ctx, selectItems, pq.Array(orderIDs))
 	if err != nil {
-		return []model.Orders{}, fmt.Errorf("select items: %w", err)
+		return []model.Order{}, fmt.Errorf("select items: %w", err)
 	}
 	defer itemrows.Close()
 	for itemrows.Next() {
@@ -121,22 +122,22 @@ func (r *PostgresOrderRepo) GetAll(ctx context.Context, limit, offset int) ([]mo
 			&item.Quantity,
 			&item.UnitPriceCents,
 		); err != nil {
-			return []model.Orders{}, fmt.Errorf("scan order item: %w", err)
+			return []model.Order{}, fmt.Errorf("scan order item: %w", err)
 		}
 		index, exists := orderIndex[item.OrderID]
 		if !exists {
-			return []model.Orders{}, fmt.Errorf("order item references unexpected order: %d", item.OrderID)
+			return []model.Order{}, fmt.Errorf("order item references unexpected order: %d", item.OrderID)
 		}
 		orders[index].Items = append(orders[index].Items, item)
 	}
 
 	if err := itemrows.Err(); err != nil {
-		return []model.Orders{}, fmt.Errorf("iterate order items: %w", err)
+		return []model.Order{}, fmt.Errorf("iterate order items: %w", err)
 	}
 	return orders, nil
 }
 
-func (r *PostgresOrderRepo) GetAllByUserID(ctx context.Context, userId, limit, offset int) ([]model.Orders, error) {
+func (r *PostgresOrderRepo) GetAllByUserID(ctx context.Context, userId, limit, offset int) ([]model.Order, error) {
 	const queryOrders = `
 		Select o.id, o.user_id, o.total_amount_cents, o.status, o.created_at
 		FROM orders o
@@ -146,18 +147,18 @@ func (r *PostgresOrderRepo) GetAllByUserID(ctx context.Context, userId, limit, o
 `
 	rows, err := r.db.QueryContext(ctx, queryOrders, userId, limit, offset)
 	if err != nil {
-		return []model.Orders{}, fmt.Errorf("query orders by userId: %w", err)
+		return []model.Order{}, fmt.Errorf("query orders by userId: %w", err)
 	}
 	defer rows.Close()
 
-	orders := make([]model.Orders, 0)
+	orders := make([]model.Order, 0)
 	orderIDs := make([]int, 0)
 	orderIndex := make(map[int]int)
 
 	for rows.Next() {
-		var order model.Orders
+		var order model.Order
 		if err = rows.Scan(&order.OrderID, &order.UserID, &order.TotalAmountCents, &order.Status, &order.CreatedAt); err != nil {
-			return []model.Orders{}, fmt.Errorf("scan order: %w", err)
+			return []model.Order{}, fmt.Errorf("scan order: %w", err)
 		}
 
 		order.Items = make([]model.OrderItem, 0)
@@ -209,17 +210,17 @@ func (r *PostgresOrderRepo) GetAllByUserID(ctx context.Context, userId, limit, o
 	return orders, nil
 }
 
-func (r *PostgresOrderRepo) GetByID(ctx context.Context, id int) (model.Orders, error) {
-	var order model.Orders
+func (r *PostgresOrderRepo) GetByID(ctx context.Context, id int) (model.Order, error) {
+	var order model.Order
 	err := r.db.QueryRowContext(ctx,
 		`select o.id, o.user_id, o.total_amount_cents,  o.status, o.created_at from orders o WHERE o.id = $1`,
 		id).Scan(&order.OrderID, &order.UserID, &order.TotalAmountCents, &order.Status, &order.CreatedAt)
 	if err != nil {
-		return model.Orders{}, err
+		return model.Order{}, err
 	}
 	rows, err := r.db.QueryContext(ctx, `select oi.id,  oi.product_id, oi.quantity, oi.unit_price_cents from order_items oi where oi.order_id = $1`, order.OrderID)
 	if err != nil {
-		return model.Orders{}, err
+		return model.Order{}, err
 	}
 	defer rows.Close()
 	order.Items = []model.OrderItem{}
@@ -227,7 +228,7 @@ func (r *PostgresOrderRepo) GetByID(ctx context.Context, id int) (model.Orders, 
 		var item model.OrderItem
 		err = rows.Scan(&item.ID, &item.ProductID, &item.Quantity, &item.UnitPriceCents)
 		if err != nil {
-			return model.Orders{}, err
+			return model.Order{}, err
 		}
 		item.OrderID = order.OrderID
 		order.Items = append(order.Items, item)
@@ -280,14 +281,14 @@ func (r *PostgresOrderRepo) Delete(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r *PostgresOrderRepo) Cancel(ctx context.Context, orderID int) (model.Orders, error) {
+func (r *PostgresOrderRepo) Cancel(ctx context.Context, orderID int) (model.Order, error) {
 	const query = `
 		UPDATE orders
 		SET status = $1
 		WHERE id = $2 AND status = $3
 		RETURNING id, user_id, status, total_amount_cents, created_at
 `
-	var order model.Orders
+	var order model.Order
 	if err := r.db.QueryRowContext(ctx, query, model.OrderCancelled, orderID, model.OrderPending).Scan(
 		&order.OrderID,
 		&order.UserID,
@@ -295,7 +296,7 @@ func (r *PostgresOrderRepo) Cancel(ctx context.Context, orderID int) (model.Orde
 		&order.TotalAmountCents,
 		&order.CreatedAt,
 	); err != nil {
-		return model.Orders{}, fmt.Errorf("failed to query row: %w", err)
+		return model.Order{}, fmt.Errorf("failed to query row: %w", err)
 	}
 	return order, nil
 

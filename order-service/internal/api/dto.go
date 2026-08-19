@@ -22,7 +22,7 @@ type OrderItemResponse struct {
 	UnitPriceCents int64 `json:"unit_price_cents"`
 }
 
-func ToOrderResponse(order model.Orders) OrderResponse {
+func ToOrderResponse(order model.Order) OrderResponse {
 	items := make([]OrderItemResponse, 0, len(order.Items))
 	for _, item := range order.Items {
 		items = append(items, OrderItemResponse{
@@ -39,7 +39,7 @@ func ToOrderResponse(order model.Orders) OrderResponse {
 	}
 }
 
-func ToOrderResponses(orders []model.Orders) []OrderResponse {
+func ToOrderResponses(orders []model.Order) []OrderResponse {
 	responses := make([]OrderResponse, 0, len(orders))
 	for _, order := range orders {
 		responses = append(responses, ToOrderResponse(order))

@@ -69,6 +69,7 @@ func (s *InventoryService) ReduceStock(ctx context.Context, productId, quantity 
 	}
 	updatedProduct, err := s.repo.ReduceStock(ctx, params)
 	if errors.Is(err, sql.ErrNoRows) {
+
 		return model.Product{}, ErrInsufficientStock
 	}
 	if err != nil {

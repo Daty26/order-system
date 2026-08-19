@@ -118,9 +118,7 @@ func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 			r,
 			h.logger,
 			err,
-			"failed to get all",
-			"limit", limit,
-			"offset", offset,
+			"failed to get all users",
 		)
 		return
 	}
