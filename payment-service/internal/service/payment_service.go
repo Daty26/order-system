@@ -6,18 +6,17 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Daty26/order-system/payment-service/internal/kafka"
 	"github.com/Daty26/order-system/payment-service/internal/model"
 	"github.com/Daty26/order-system/payment-service/internal/repository"
 )
 
 type PaymentService struct {
 	paymentRep repository.PaymentRep
-	producer   *kafka.KafkaProducer
+	producer   EventPublisher
 	client     OrderClient
 }
 
-func NewPaymentService(payRep repository.PaymentRep, prod *kafka.KafkaProducer, client OrderClient) *PaymentService {
+func NewPaymentService(payRep repository.PaymentRep, prod EventPublisher, client OrderClient) *PaymentService {
 	return &PaymentService{paymentRep: payRep, producer: prod, client: client}
 }
 
@@ -50,6 +49,34 @@ func (s *PaymentService) ProcessPayment(ctx context.Context, input ProcessPaymen
 		return model.Payment{}, fmt.Errorf("publish payment completed event: %w", err)
 	}
 	return savedPayment, nil
+}
+
+func (s *PaymentService) ProcessOrderCreated(ctx context.Context, event OrderCreatedEvent) (model.Payment, error) {
+	if event.OrderID <= 0 || event.UserID <= 0 || event.TotalAmountCents <= 0 {
+		return model.Payment{}, ErrInvalidInput
+	}
+	paymentParams := repository.ProcessPaymentParams{
+		OrderID:     event.OrderID,
+		UserID:      event.UserID,
+		AmountCents: event.TotalAmountCents,
+		Status:      model.PaymentCompleted,
+	}
+	payment, err := s.paymentRep.Save(ctx, paymentParams)
+	if err != nil {
+		if errors.Is(err, repository.ErrPaymentAlreadyExists) {
+			return model.Payment{}, ErrPaymentAlreadyExists
+		}
+		return model.Payment{}, err
+	}
+	payload, err := json.Marshal(payment)
+	if err != nil {
+		return model.Payment{}, fmt.Errorf("failed to marshal payment.completed: %w", err)
+	}
+	if err := s.producer.Publish("payment.completed", payload); err != nil {
+		return model.Payment{}, fmt.Errorf("failed to publish payment.completed topic: %w", err)
+	}
+	return model.Payment{}, nil
+
 }
 
 func (s *PaymentService) GetAllPayments(ctx context.Context, limit, offset int) ([]model.Payment, error) {

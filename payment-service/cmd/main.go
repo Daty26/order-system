@@ -47,6 +47,17 @@ func main() {
 
 	repo := repository.NewPostgresRep(db.DataDB)
 	srv := service.NewPaymentService(repo, producer, orderClient)
+
+	orderCreatedhandler := kafka.NewOrderCreatedHandler(srv, logger)
+	consumer, err := kafka.NewKafkaConsumer(kafkaBrokers, orderCreatedhandler.Handle)
+	if err != nil {
+		log.Fatalf("create order.created consumer: %v", err)
+	}
+	defer consumer.Close()
+	if err := consumer.Consume("order.created"); err != nil {
+		log.Fatalf("consume order.created event: %v", err)
+	}
+
 	handler := api.NewPaymentHandler(srv, logger)
 
 	r := chi.NewRouter()

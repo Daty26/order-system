@@ -28,3 +28,13 @@ type GetAllByUserIDInput struct {
 	Limit  int
 	Offset int
 }
+
+type OrderCreatedEvent struct {
+	Version          int   `json:"version"`
+	OrderID          int   `json:"order_id"`
+	UserID           int   `json:"user_id"`
+	TotalAmountCents int64 `json:"total_amount_cents"`
+}
+type EventPublisher interface {
+	Publish(topic string, message []byte) error
+}

@@ -32,6 +32,7 @@ func (kc *KafkaConsumer) Consume(topic string) error {
 	}()
 	return err
 }
+
 func (kc *KafkaConsumer) Close() error {
 	return kc.consumer.Close()
 }

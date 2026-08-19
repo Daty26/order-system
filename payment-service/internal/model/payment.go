@@ -15,3 +15,10 @@ type Payment struct {
 	AmountCents int64         `json:"amount_cents"`
 	UserID      int           `json:"user_id"`
 }
+
+type OrderCreatedEvent struct {
+	Version          int   `json:"version"`
+	OrderID          int   `json:"order_id"`
+	UserID           int   `json:"user_id"`
+	TotalAmountCents int64 `json:"total_amount_cents"`
+}
